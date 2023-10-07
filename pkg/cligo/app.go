@@ -327,7 +327,7 @@ func (a app) parseOneLong(arg string, args []string) ([]string, error) {
 
 	opt, isNegated, exists := a.findLongOption(name)
 	if !exists {
-		return nil, ErrUnexpectedArgument{arg}
+		return nil, fmt.Errorf("the following argument was not expected: %s\n%s", arg, ErrorSuffix)
 	}
 
 	if opt.isFlag {
@@ -396,7 +396,7 @@ func (a app) parseOneShort(arg string, args []string) ([]string, error) {
 
 		opt, isNegated, exists := a.findShortOption(shortName)
 		if !exists {
-			return nil, ErrUnexpectedArgument{arg}
+			return nil, fmt.Errorf("the following argument was not expected: %s\n%s", arg, ErrorSuffix)
 		}
 
 		isLast := i == len(name)-1
@@ -492,7 +492,7 @@ func (a app) ParseArgsStrict(args []string) error {
 	}
 
 	if len(rest) != 0 {
-		return ErrUnexpectedArguments{rest}
+		return fmt.Errorf("the following arguments were not expected: %s\n%s", rest, ErrorSuffix)
 	}
 
 	return nil
@@ -522,18 +522,18 @@ func (a app) ParseArgs(args []string) ([]string, error) {
 
 	for _, opt := range a.allOptions {
 		if opt.isRequired && !opt.exists {
-			return nil, ErrMissingRequiredArgument{opt.canonicalName()}
+			return nil, fmt.Errorf("%s is required\n%s", opt.canonicalName(), ErrorSuffix)
 		}
 
 		for _, need := range opt.needs {
 			if !need.exists {
-				return nil, ErrMissingRequiredOption{opt.canonicalName(), need.canonicalName()}
+				return nil, fmt.Errorf("%s requires %s\n%s", opt.canonicalName(), need.canonicalName(), ErrorSuffix)
 			}
 		}
 
 		for _, exclude := range opt.excludes {
 			if exclude.exists {
-				return nil, ErrConflictingOption{opt.canonicalName(), exclude.canonicalName()}
+				return nil, fmt.Errorf("%s excludes %s\n%s", opt.canonicalName(), exclude.canonicalName(), ErrorSuffix)
 			}
 		}
 	}
