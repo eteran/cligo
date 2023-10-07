@@ -38,11 +38,11 @@ func NewApp() app {
 
 func (a app) Usage() {
 	fmt.Printf("Usage: %s [OPTIONS]", os.Args[0])
-	for _, pOption := range a.pOptions {
-		fmt.Printf(" %s", pOption.positionalName)
+	for _, opt := range a.pOptions {
+		fmt.Printf(" %s", opt.positionalName)
 	}
 
-	fmt.Printf("\n")
+	fmt.Println("")
 	if len(a.pOptions) != 0 {
 		fmt.Println("")
 		fmt.Println("Positionals:")
@@ -141,11 +141,11 @@ func (a *app) addShortOption(name string, opt *Option, isNegated bool) error {
 
 func (a *app) AddOption(name string, value any, help string, modifiers ...Modifier) *Option {
 	if value == nil {
-		panic(ErrNilBoundVariable)
+		panic("bound variables cannot be nil")
 	}
 
 	if reflect.TypeOf(value).Kind() != reflect.Ptr {
-		panic(ErrNotPointer)
+		panic("bound variables must be pointers")
 	}
 
 	opt := &Option{
@@ -165,7 +165,7 @@ func (a *app) AddOption(name string, value any, help string, modifiers ...Modifi
 	for _, optionName := range names {
 
 		if optionName == "" {
-			panic(ErrEmptyName)
+			panic("argument has empty name, do you have a trailing comma?")
 		}
 
 		isLong := strings.HasPrefix(optionName, "--")
@@ -196,7 +196,7 @@ func (a *app) AddOption(name string, value any, help string, modifiers ...Modifi
 func ensureIntegralPointer(value any) {
 	ty := reflect.TypeOf(value)
 	if ty.Kind() != reflect.Ptr {
-		panic(ErrNotPointer)
+		panic("bound variables must be pointers")
 	}
 
 	switch ty.Elem().Kind() {
@@ -205,14 +205,14 @@ func ensureIntegralPointer(value any) {
 		reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
 		break
 	default:
-		panic(ErrNotFlagType)
+		panic("flags may only be boolean or integral types")
 	}
 }
 
 func (a *app) AddFlag(name string, value any, help string, modifiers ...Modifier) *Option {
 
 	if value == nil {
-		panic(ErrNilBoundVariable)
+		panic("bound variables cannot be nil")
 	}
 
 	ensureIntegralPointer(value)
@@ -233,7 +233,7 @@ func (a *app) AddFlag(name string, value any, help string, modifiers ...Modifier
 	for _, flagName := range names {
 
 		if flagName == "" {
-			panic(ErrEmptyName)
+			panic("argument has empty name, do you have a trailing comma?")
 		}
 
 		isNegated := strings.HasPrefix(flagName, "!")
@@ -256,7 +256,7 @@ func (a *app) AddFlag(name string, value any, help string, modifiers ...Modifier
 				panic(err)
 			}
 		} else if isPositional {
-			panic(ErrInvalidPositional)
+			panic("positional arguments must not be flags")
 		}
 	}
 
