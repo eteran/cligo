@@ -27,16 +27,28 @@ type Option struct {
 	ignoreCase       bool
 	group            string
 	trigger          Trigger
+	needs            []*Option
+	excludes         []*Option
 
 	// TODO(eteran):
-	// needs
-	// excludes
 	// envname
 }
 
 type Trigger func(opt *Option)
 
 type Modifier func(opt *Option)
+
+func Needs(dep *Option) Modifier {
+	return func(opt *Option) {
+		opt.needs = append(opt.needs, dep)
+	}
+}
+
+func Excludes(dep *Option) Modifier {
+	return func(opt *Option) {
+		opt.excludes = append(opt.excludes, dep)
+	}
+}
 
 func Required() Modifier {
 	return func(opt *Option) {
@@ -81,10 +93,6 @@ func IsNil(i any) bool {
 		return reflect.ValueOf(i).IsNil()
 	}
 	return false
-}
-
-func (opt Option) Value() any {
-	return opt.value
 }
 
 func (opt Option) Exists() any {

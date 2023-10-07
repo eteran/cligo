@@ -8,19 +8,14 @@ import (
 
 func main() {
 
-	var filename string
-	var verbose bool
-	var mypos string
-	var source string
-	var flag uint16
-
 	app := NewApp()
 
-	app.AddOption("-f,--file", &filename, "A help string", SetGroup("Test"), SetDefault("monkey.txt"))
-	app.AddFlag("-v,--verbose", &verbose, "Some other help string")
-	app.AddFlag("--flag,!--no-flag", &flag, "help for flag")
-	app.AddOption("-a,-b,--alpha,--beta,mypos", &mypos, "positional with an alias")
-	app.AddOption("source", &source, "where to read the input from")
+	var option1 string
+	var option2 string
+
+	o1 := app.AddOption("-a,--alpha", &option1, "Option1")
+	o2 := app.AddOption("-b,--beta", &option2, "Option2", Excludes(o1))
+	_ = o2
 
 	err := app.ParseStrict()
 	if err != nil {
@@ -28,10 +23,6 @@ func main() {
 		os.Exit(0)
 	}
 
-	fmt.Println("Verbose:", verbose)
-	fmt.Println("Filename is:", filename)
-	fmt.Println("mypos is:", mypos)
-	fmt.Println("source is:", source)
-	fmt.Println("Flag is:", flag)
+	fmt.Println(option1, ":", option2)
 
 }

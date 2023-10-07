@@ -36,6 +36,17 @@ func NewApp() app {
 	}
 }
 
+func valueTypeString(opt *Option) string {
+	switch opt.value.(type) {
+	case *int, *int8, *int16, *int32, *int64, *uint, *uint8, *uint16, *uint32, *uint64:
+		return " NUMBER"
+	case *string:
+		return " TEXT"
+	default:
+		return ""
+	}
+}
+
 func (a app) Usage() {
 	fmt.Printf("Usage: %s [OPTIONS]", os.Args[0])
 	for _, opt := range a.pOptions {
@@ -48,6 +59,12 @@ func (a app) Usage() {
 		fmt.Println("Positionals:")
 		for _, opt := range a.pOptions {
 			name := opt.positionalName
+			name = name + valueTypeString(opt)
+
+			if opt.defaultValue != "" {
+				name = name + fmt.Sprintf(" [%s]", opt.defaultValue)
+			}
+
 			if opt.isRequired {
 				name = name + " REQUIRED"
 			}
@@ -55,12 +72,18 @@ func (a app) Usage() {
 		}
 	}
 
-	for name, group := range a.groups {
+	for groupName, group := range a.groups {
 		fmt.Println("")
-		fmt.Printf("%s:\n", name)
+		fmt.Printf("%s:\n", groupName)
 		for _, opt := range group {
 			if !opt.isPositionalOnly {
 				names := strings.Join(append(opt.shortNames, opt.longNames...), ",")
+				names = names + valueTypeString(opt)
+
+				if opt.defaultValue != "" {
+					names = names + fmt.Sprintf(" [%s]", opt.defaultValue)
+				}
+
 				if opt.isRequired {
 					names = names + " REQUIRED"
 				}
@@ -68,7 +91,7 @@ func (a app) Usage() {
 			}
 		}
 
-		if name == "Options" {
+		if groupName == "Options" {
 			fmt.Printf("  %-30s %s\n", "-h,--help", "Print this help message and exit")
 		}
 	}
@@ -500,6 +523,18 @@ func (a app) ParseArgs(args []string) ([]string, error) {
 	for _, opt := range a.allOptions {
 		if opt.isRequired && !opt.exists {
 			return nil, ErrMissingRequiredArgument{opt.canonicalName()}
+		}
+
+		for _, need := range opt.needs {
+			if !need.exists {
+				return nil, ErrMissingRequiredOption{opt.canonicalName(), need.canonicalName()}
+			}
+		}
+
+		for _, exclude := range opt.excludes {
+			if exclude.exists {
+				return nil, ErrConflictingOption{opt.canonicalName(), exclude.canonicalName()}
+			}
 		}
 	}
 
