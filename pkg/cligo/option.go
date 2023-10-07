@@ -47,6 +47,7 @@ func Needs(dep *Option) Modifier {
 func Excludes(dep *Option) Modifier {
 	return func(opt *Option) {
 		opt.excludes = append(opt.excludes, dep)
+		dep.excludes = append(dep.excludes, opt)
 	}
 }
 
