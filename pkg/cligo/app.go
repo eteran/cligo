@@ -3,10 +3,8 @@ package cligo
 import (
 	"errors"
 	"fmt"
-	"math"
 	"os"
 	"reflect"
-	"strconv"
 	"strings"
 )
 
@@ -48,25 +46,25 @@ func (a app) Usage() {
 	if len(a.pOptions) != 0 {
 		fmt.Println("")
 		fmt.Println("Positionals:")
-		for _, pOption := range a.pOptions {
-			name := pOption.positionalName
-			if pOption.isRequired {
+		for _, opt := range a.pOptions {
+			name := opt.positionalName
+			if opt.isRequired {
 				name = name + " REQUIRED"
 			}
-			fmt.Printf("  %-30s %s\n", name, pOption.help)
+			fmt.Printf("  %-30s %s\n", name, opt.help)
 		}
 	}
 
 	for name, group := range a.groups {
 		fmt.Println("")
 		fmt.Printf("%s:\n", name)
-		for _, option := range group {
-			if !option.isPositionalOnly {
-				names := strings.Join(append(option.shortNames, option.longNames...), ",")
-				if option.isRequired {
+		for _, opt := range group {
+			if !opt.isPositionalOnly {
+				names := strings.Join(append(opt.shortNames, opt.longNames...), ",")
+				if opt.isRequired {
 					names = names + " REQUIRED"
 				}
-				fmt.Printf("  %-30s %s\n", names, option.help)
+				fmt.Printf("  %-30s %s\n", names, opt.help)
 			}
 		}
 
@@ -78,65 +76,65 @@ func (a app) Usage() {
 	os.Exit(0)
 }
 
-func (a *app) addLongOption(name string, option *Option, isNegated bool) error {
+func (a *app) addLongOption(name string, opt *Option, isNegated bool) error {
 
-	option.longNames = append(option.longNames, "--"+name)
-	option.isPositionalOnly = false
+	opt.longNames = append(opt.longNames, "--"+name)
+	opt.isPositionalOnly = false
 	lName := strings.ToLower(name)
 
 	if isNegated {
 		if _, exists := a.lNegatedOptions[name]; exists {
 			return ErrDuplicateOption
 		}
-		a.lNegatedOptions[name] = option
+		a.lNegatedOptions[name] = opt
 
 		if _, exists := a.lNegatedLowerOptions[lName]; exists {
 			return ErrDuplicateOption
 		}
-		a.lNegatedLowerOptions[lName] = option
+		a.lNegatedLowerOptions[lName] = opt
 
 	} else {
 		if _, exists := a.lOptions[name]; exists {
 			return ErrDuplicateOption
 		}
-		a.lOptions[name] = option
+		a.lOptions[name] = opt
 
 		if _, exists := a.lLowerOptions[lName]; exists {
 			return ErrDuplicateOption
 		}
-		a.lLowerOptions[lName] = option
+		a.lLowerOptions[lName] = opt
 
 	}
 	return nil
 }
 
-func (a *app) addShortOption(name string, option *Option, isNegated bool) error {
+func (a *app) addShortOption(name string, opt *Option, isNegated bool) error {
 
-	option.shortNames = append(option.shortNames, "-"+name)
-	option.isPositionalOnly = false
+	opt.shortNames = append(opt.shortNames, "-"+name)
+	opt.isPositionalOnly = false
 	lName := strings.ToLower(name)
 
 	if isNegated {
 		if _, exists := a.sNegatedOptions[name]; exists {
 			return ErrDuplicateOption
 		}
-		a.sNegatedOptions[name] = option
+		a.sNegatedOptions[name] = opt
 
 		if _, exists := a.sNegatedLowerOptions[lName]; exists {
 			return ErrDuplicateOption
 		}
-		a.sNegatedLowerOptions[lName] = option
+		a.sNegatedLowerOptions[lName] = opt
 	} else {
 
 		if _, exists := a.sOptions[name]; exists {
 			return ErrDuplicateOption
 		}
-		a.sOptions[name] = option
+		a.sOptions[name] = opt
 
 		if _, exists := a.sLowerOptions[lName]; exists {
 			return ErrDuplicateOption
 		}
-		a.sLowerOptions[lName] = option
+		a.sLowerOptions[lName] = opt
 	}
 	return nil
 }
@@ -150,7 +148,7 @@ func (a *app) AddOption(name string, value any, help string, modifiers ...Modifi
 		panic(ErrNotPointer)
 	}
 
-	option := &Option{
+	opt := &Option{
 		help:             help,
 		value:            value,
 		isFlag:           false,
@@ -159,7 +157,7 @@ func (a *app) AddOption(name string, value any, help string, modifiers ...Modifi
 	}
 
 	for _, mod := range modifiers {
-		mod(option)
+		mod(opt)
 	}
 
 	name = strings.TrimSpace(name)
@@ -176,23 +174,23 @@ func (a *app) AddOption(name string, value any, help string, modifiers ...Modifi
 
 		if isLong {
 			lName := optionName[2:]
-			if err := a.addLongOption(lName, option, false); err != nil {
+			if err := a.addLongOption(lName, opt, false); err != nil {
 				panic(err)
 			}
 		} else if isShort {
 			sName := optionName[1:]
-			if err := a.addShortOption(sName, option, false); err != nil {
+			if err := a.addShortOption(sName, opt, false); err != nil {
 				panic(err)
 			}
 		} else if isPositional {
-			option.positionalName = optionName
-			a.pOptions = append(a.pOptions, option)
+			opt.positionalName = optionName
+			a.pOptions = append(a.pOptions, opt)
 		}
 	}
 
-	a.allOptions = append(a.allOptions, option)
-	a.groups[option.group] = append(a.groups[option.group], option)
-	return option
+	a.allOptions = append(a.allOptions, opt)
+	a.groups[opt.group] = append(a.groups[opt.group], opt)
+	return opt
 }
 
 func ensureIntegralPointer(value any) {
@@ -219,7 +217,7 @@ func (a *app) AddFlag(name string, value any, help string, modifiers ...Modifier
 
 	ensureIntegralPointer(value)
 
-	option := &Option{
+	opt := &Option{
 		help:   help,
 		value:  value,
 		isFlag: true,
@@ -227,7 +225,7 @@ func (a *app) AddFlag(name string, value any, help string, modifiers ...Modifier
 	}
 
 	for _, mod := range modifiers {
-		mod(option)
+		mod(opt)
 	}
 
 	name = strings.TrimSpace(name)
@@ -249,12 +247,12 @@ func (a *app) AddFlag(name string, value any, help string, modifiers ...Modifier
 
 		if isLong {
 			lName := flagName[2:]
-			if err := a.addLongOption(lName, option, isNegated); err != nil {
+			if err := a.addLongOption(lName, opt, isNegated); err != nil {
 				panic(err)
 			}
 		} else if isShort {
 			sName := flagName[1:]
-			if err := a.addShortOption(sName, option, isNegated); err != nil {
+			if err := a.addShortOption(sName, opt, isNegated); err != nil {
 				panic(err)
 			}
 		} else if isPositional {
@@ -262,27 +260,27 @@ func (a *app) AddFlag(name string, value any, help string, modifiers ...Modifier
 		}
 	}
 
-	a.allOptions = append(a.allOptions, option)
-	a.groups[option.group] = append(a.groups[option.group], option)
-	return option
+	a.allOptions = append(a.allOptions, opt)
+	a.groups[opt.group] = append(a.groups[opt.group], opt)
+	return opt
 }
 
-func (a app) findLongOption(name string) (option *Option, isNegated bool, exists bool) {
-	if option, exists := a.lOptions[name]; exists {
-		return option, false, true
+func (a app) findLongOption(name string) (opt *Option, isNegated bool, exists bool) {
+	if opt, exists := a.lOptions[name]; exists {
+		return opt, false, true
 	}
 
-	if option, exists := a.lNegatedOptions[name]; exists {
-		return option, true, true
+	if opt, exists := a.lNegatedOptions[name]; exists {
+		return opt, true, true
 	}
 
 	lName := strings.ToLower(name)
-	if option, exists := a.lLowerOptions[lName]; exists && option.ignoreCase {
-		return option, false, true
+	if opt, exists := a.lLowerOptions[lName]; exists && opt.ignoreCase {
+		return opt, false, true
 	}
 
-	if option, exists := a.lNegatedLowerOptions[lName]; exists && option.ignoreCase {
-		return option, true, true
+	if opt, exists := a.lNegatedLowerOptions[lName]; exists && opt.ignoreCase {
+		return opt, true, true
 	}
 
 	return nil, false, false
@@ -304,34 +302,33 @@ func (a app) parseOneLong(arg string, args []string) ([]string, error) {
 		param = x[1]
 	}
 
-	option, isNegated, exists := a.findLongOption(name)
+	opt, isNegated, exists := a.findLongOption(name)
 	if !exists {
 		return nil, ErrUnexpectedArgument{arg}
 	}
 
-	if option.isFlag {
+	if opt.isFlag {
 		if param == "" {
-			if err := incrementFlag(option, isNegated); err != nil {
+			if err := opt.incrementFlag(isNegated); err != nil {
 				return nil, err
 			}
 			return args, nil
 		} else {
-			if err := setValue(option, param); err != nil {
+			if err := opt.setValue(param); err != nil {
 				return nil, err
 			}
 			return args, nil
 		}
 	} else {
 		if param == "" {
-			if len(args) > 0 {
-				param = args[0]
-				args = args[1:]
-			} else {
+			if len(args) == 0 {
 				return nil, ErrMissingParameter
 			}
+			param = args[0]
+			args = args[1:]
 		}
 
-		if err := setValue(option, param); err != nil {
+		if err := opt.setValue(param); err != nil {
 			return nil, err
 		}
 	}
@@ -339,22 +336,22 @@ func (a app) parseOneLong(arg string, args []string) ([]string, error) {
 	return args, nil
 }
 
-func (a app) findShortOption(name string) (option *Option, isNegated bool, exists bool) {
-	if option, exists := a.sOptions[name]; exists {
-		return option, false, true
+func (a app) findShortOption(name string) (opt *Option, isNegated bool, exists bool) {
+	if opt, exists := a.sOptions[name]; exists {
+		return opt, false, true
 	}
 
-	if option, exists := a.sNegatedOptions[name]; exists {
-		return option, true, true
+	if opt, exists := a.sNegatedOptions[name]; exists {
+		return opt, true, true
 	}
 
 	lName := strings.ToLower(name)
-	if option, exists := a.sLowerOptions[lName]; exists && option.ignoreCase {
-		return option, false, true
+	if opt, exists := a.sLowerOptions[lName]; exists && opt.ignoreCase {
+		return opt, false, true
 	}
 
-	if option, exists := a.sNegatedLowerOptions[lName]; exists && option.ignoreCase {
-		return option, true, true
+	if opt, exists := a.sNegatedLowerOptions[lName]; exists && opt.ignoreCase {
+		return opt, true, true
 	}
 
 	return nil, false, false
@@ -371,33 +368,33 @@ func (a app) parseOneShort(arg string, args []string) ([]string, error) {
 
 	name := arg[1:]
 
-	for j := 0; j < len(name); j++ {
-		shortName := string(name[j])
+	for i, ch := range name {
+		shortName := string(ch)
 
-		option, isNegated, exists := a.findShortOption(shortName)
+		opt, isNegated, exists := a.findShortOption(shortName)
 		if !exists {
 			return nil, ErrUnexpectedArgument{arg}
 		}
 
-		isLast := j == len(name)-1
-		if option.isFlag {
-			if err := incrementFlag(option, isNegated); err != nil {
+		isLast := i == len(name)-1
+		if opt.isFlag {
+			if err := opt.incrementFlag(isNegated); err != nil {
 				return nil, err
 			}
 		} else if isLast {
-			if len(args) > 0 {
-				param := args[0]
-				args = args[1:]
-
-				if err := setValue(option, param); err != nil {
-					return nil, err
-				}
-			} else {
+			if len(args) == 0 {
 				return nil, ErrMissingParameter
 			}
+
+			param := args[0]
+			args = args[1:]
+
+			if err := opt.setValue(param); err != nil {
+				return nil, err
+			}
 		} else {
-			param := name[1+j:]
-			if err := setValue(option, param); err != nil {
+			param := name[1+i:]
+			if err := opt.setValue(param); err != nil {
 				return nil, err
 			}
 			break
@@ -442,9 +439,9 @@ func (a app) parseOne(args []string) ([]string, error) {
 
 func (a app) parsePositional(args []string) ([]string, error) {
 
-	for _, pOption := range a.pOptions {
+	for _, opt := range a.pOptions {
 
-		if pOption.exists {
+		if opt.exists {
 			continue
 		}
 
@@ -452,7 +449,7 @@ func (a app) parsePositional(args []string) ([]string, error) {
 			break
 		}
 
-		if err := setValue(pOption, args[0]); err != nil {
+		if err := opt.setValue(args[0]); err != nil {
 			return nil, err
 		}
 		args = args[1:]
@@ -500,256 +497,11 @@ func (a app) ParseArgs(args []string) ([]string, error) {
 		return nil, err
 	}
 
-	for _, option := range a.allOptions {
-		if option.isRequired && !option.exists {
-			return nil, ErrMissingRequiredArgument{option.canonicalName()}
+	for _, opt := range a.allOptions {
+		if opt.isRequired && !opt.exists {
+			return nil, ErrMissingRequiredArgument{opt.canonicalName()}
 		}
 	}
 
 	return args, nil
-}
-
-func b2i(b bool) int8 {
-	if b {
-		return 1
-	}
-	return 0
-}
-
-func b2u(b bool) uint8 {
-	if b {
-		return 1
-	}
-	return 0
-}
-
-func setValue(option *Option, value string) error {
-
-	ptr := option.value
-	switch p := ptr.(type) {
-	case *int:
-		iValue, err := strconv.ParseBool(value)
-		if err == nil {
-			*p = int(b2i(iValue))
-		} else {
-			if math.MaxInt == math.MaxInt32 {
-				iValue, err := strconv.ParseInt(value, 10, 32)
-				if err != nil {
-					return err
-				}
-				*p = int(iValue)
-			} else if math.MaxInt == math.MaxInt64 {
-				iValue, err := strconv.ParseInt(value, 10, 64)
-				if err != nil {
-					return err
-				}
-				*p = int(iValue)
-			} else {
-				return ErrUnexpectedIntegerWidth
-			}
-		}
-	case *int8:
-		iValue, err := strconv.ParseBool(value)
-		if err == nil {
-			*p = b2i(iValue)
-		} else {
-			iValue, err := strconv.ParseInt(value, 10, 8)
-			if err != nil {
-				return err
-			}
-			*p = int8(iValue)
-		}
-	case *int16:
-		iValue, err := strconv.ParseBool(value)
-		if err == nil {
-			*p = int16(b2i(iValue))
-		} else {
-			iValue, err := strconv.ParseInt(value, 10, 16)
-			if err != nil {
-				return err
-			}
-			*p = int16(iValue)
-		}
-	case *int32:
-		iValue, err := strconv.ParseBool(value)
-		if err == nil {
-			*p = int32(b2i(iValue))
-		} else {
-			iValue, err := strconv.ParseInt(value, 10, 32)
-			if err != nil {
-				return err
-			}
-			*p = int32(iValue)
-		}
-	case *int64:
-		iValue, err := strconv.ParseBool(value)
-		if err == nil {
-			*p = int64(b2i(iValue))
-		} else {
-			iValue, err := strconv.ParseInt(value, 10, 64)
-			if err != nil {
-				return err
-			}
-			*p = iValue
-		}
-	case *uint:
-		iValue, err := strconv.ParseBool(value)
-		if err == nil {
-			*p = uint(b2u(iValue))
-		} else {
-			if math.MaxUint == math.MaxUint32 {
-				iValue, err := strconv.ParseInt(value, 10, 32)
-				if err != nil {
-					return err
-				}
-				*p = uint(iValue)
-			} else if math.MaxUint == math.MaxUint64 {
-				iValue, err := strconv.ParseInt(value, 10, 64)
-				if err != nil {
-					return err
-				}
-				*p = uint(iValue)
-			} else {
-				return ErrUnexpectedIntegerWidth
-			}
-		}
-	case *uint8:
-		iValue, err := strconv.ParseBool(value)
-		if err == nil {
-			*p = b2u(iValue)
-		} else {
-			iValue, err := strconv.ParseUint(value, 10, 8)
-			if err != nil {
-				return err
-			}
-			*p = uint8(iValue)
-		}
-	case *uint16:
-		iValue, err := strconv.ParseBool(value)
-		if err == nil {
-			*p = uint16(b2u(iValue))
-		} else {
-			iValue, err := strconv.ParseUint(value, 10, 16)
-			if err != nil {
-				return err
-			}
-			*p = uint16(iValue)
-		}
-	case *uint32:
-		iValue, err := strconv.ParseBool(value)
-		if err == nil {
-			*p = uint32(b2u(iValue))
-		} else {
-			iValue, err := strconv.ParseUint(value, 10, 32)
-			if err != nil {
-				return err
-			}
-			*p = uint32(iValue)
-		}
-	case *uint64:
-		iValue, err := strconv.ParseBool(value)
-		if err == nil {
-			*p = uint64(b2u(iValue))
-		} else {
-			iValue, err := strconv.ParseUint(value, 10, 64)
-			if err != nil {
-				return err
-			}
-			*p = iValue
-		}
-	case *bool:
-		iValue, err := strconv.ParseBool(value)
-		if err != nil {
-			return err
-		}
-		*p = iValue
-	case *string:
-		*p = value
-	default:
-		return ErrUnsupportedType
-	}
-
-	option.exists = true
-	if option.trigger != nil {
-		option.trigger(option)
-	}
-	return nil
-}
-
-func incrementFlag(option *Option, isNegated bool) error {
-
-	if isNegated {
-		return zeroFlag(option)
-	}
-
-	ptr := option.value
-	switch p := ptr.(type) {
-	case *int:
-		*p++
-	case *int8:
-		*p++
-	case *int16:
-		*p++
-	case *int32:
-		*p++
-	case *int64:
-		*p++
-	case *uint:
-		*p++
-	case *uint8:
-		*p++
-	case *uint16:
-		*p++
-	case *uint32:
-		*p++
-	case *uint64:
-		*p++
-	case *bool:
-		*p = true
-	default:
-		return ErrUnsupportedType
-	}
-
-	option.exists = true
-	if option.trigger != nil {
-		option.trigger(option)
-	}
-	return nil
-}
-
-func zeroFlag(option *Option) error {
-
-	ptr := option.value
-	switch p := ptr.(type) {
-	case *int:
-		*p = 0
-	case *int8:
-		*p = 0
-	case *int16:
-		*p = 0
-	case *int32:
-		*p = 0
-	case *int64:
-		*p = 0
-	case *uint:
-		*p = 0
-	case *uint8:
-		*p = 0
-	case *uint16:
-		*p = 0
-	case *uint32:
-		*p = 0
-	case *uint64:
-		*p = 0
-	case *bool:
-		*p = false
-	default:
-		return ErrUnsupportedType
-	}
-
-	option.exists = true
-	if option.trigger != nil {
-		option.trigger(option)
-	}
-	return nil
 }

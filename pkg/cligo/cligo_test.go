@@ -52,6 +52,21 @@ func TestFlagLongEqual(t *testing.T) {
 	}
 }
 
+// --long_flag=true (long flag with equals to override default value)
+func TestFlagLongEqualInteger(t *testing.T) {
+	t.Parallel()
+	app := cligo.NewApp()
+
+	var count int
+	app.AddFlag("-c,--count", &count, "increase verbosity")
+
+	args := []string{"--count=9000"}
+	err := app.ParseArgsStrict(args)
+	if assert.NoError(t, err) {
+		assert.Equal(t, count, 9000)
+	}
+}
+
 func TestFlagShortRepeated(t *testing.T) {
 	t.Parallel()
 	app := cligo.NewApp()

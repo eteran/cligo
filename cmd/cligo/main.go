@@ -12,7 +12,7 @@ func main() {
 	var verbose bool
 	var mypos string
 	var source string
-	var flag int
+	var flag uint16
 
 	app := NewApp()
 

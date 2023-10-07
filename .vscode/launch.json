@@ -13,7 +13,7 @@
       "output": "cligo",
       "cwd": "${workspaceFolder}/cmd/cligo",
       "args": [
-        "--flag",
+        "--flag=10",
         "-n"
       ]
     }

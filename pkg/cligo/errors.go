@@ -30,14 +30,13 @@ func (err ErrMissingRequiredArgument) Error() string {
 }
 
 var (
-	ErrMissingParameter       = errors.New("missing parameter")
-	ErrEmptyName              = errors.New("argument has empty name, do you have a trailing comma?")
-	ErrNotPointer             = errors.New("bound variables must be pointers")
-	ErrNilBoundVariable       = errors.New("bound variables cannot be nil")
-	ErrNotFlagType            = errors.New("flags may only be boolean or integral types")
-	ErrUnsupportedType        = errors.New("unsupported bound variable type")
-	ErrUnexpectedIntegerWidth = errors.New("(u)int is not 64 or 32 bits)")
-	ErrEndOfArguments         = errors.New("end of arguments")
-	ErrInvalidPositional      = errors.New("positional arguments must not be flags")
-	ErrDuplicateOption        = errors.New("duplicate option")
+	ErrMissingParameter  = errors.New("missing parameter")
+	ErrEmptyName         = errors.New("argument has empty name, do you have a trailing comma?")
+	ErrNotPointer        = errors.New("bound variables must be pointers")
+	ErrNilBoundVariable  = errors.New("bound variables cannot be nil")
+	ErrNotFlagType       = errors.New("flags may only be boolean or integral types")
+	ErrUnsupportedType   = errors.New("unsupported bound variable type")
+	ErrEndOfArguments    = errors.New("end of arguments")
+	ErrInvalidPositional = errors.New("positional arguments must not be flags")
+	ErrDuplicateOption   = errors.New("duplicate option")
 )
