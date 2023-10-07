@@ -244,3 +244,86 @@ func TestOptionPositionalString(t *testing.T) {
 		assert.Equal(t, dest, "my_destination_file")
 	}
 }
+
+func TestNeedsError(t *testing.T) {
+	t.Parallel()
+	app := cligo.NewApp()
+
+	var option1 string
+	var option2 string
+
+	o1 := app.AddOption("-a,--alpha", &option1, "Option1")
+	o2 := app.AddOption("-b,--beta", &option2, "Option2", cligo.Needs(o1))
+	_ = o2
+
+	args := []string{"--beta=42"}
+	err := app.ParseArgsStrict(args)
+	assert.Error(t, err)
+}
+
+func TestNeeds(t *testing.T) {
+	t.Parallel()
+	app := cligo.NewApp()
+
+	var option1 string
+	var option2 string
+
+	o1 := app.AddOption("-a,--alpha", &option1, "Option1")
+	o2 := app.AddOption("-b,--beta", &option2, "Option2", cligo.Needs(o1))
+	_ = o2
+
+	args := []string{"--beta=world", "--alpha=hello"}
+	err := app.ParseArgsStrict(args)
+	assert.NoError(t, err)
+}
+
+func TestExcludesError(t *testing.T) {
+	t.Parallel()
+	app := cligo.NewApp()
+
+	var option1 string
+	var option2 string
+
+	o1 := app.AddOption("-a,--alpha", &option1, "Option1")
+	o2 := app.AddOption("-b,--beta", &option2, "Option2", cligo.Excludes(o1))
+	_ = o2
+
+	args := []string{"--beta=world", "--alpha=hello"}
+	err := app.ParseArgsStrict(args)
+	assert.Error(t, err)
+}
+
+func TestExcludes(t *testing.T) {
+	t.Parallel()
+	app := cligo.NewApp()
+
+	var option1 string
+	var option2 string
+
+	o1 := app.AddOption("-a,--alpha", &option1, "Option1")
+	o2 := app.AddOption("-b,--beta", &option2, "Option2", cligo.Needs(o1))
+	_ = o2
+
+	args := []string{"--alpha=hello"}
+	err := app.ParseArgsStrict(args)
+	assert.NoError(t, err)
+}
+
+/*
+	app := NewApp()
+
+	var option1 string
+	var option2 string
+
+	o1 := app.AddOption("-a,--alpha", &option1, "Option1")
+	o2 := app.AddOption("-b,--beta", &option2, "Option2", Excludes(o1))
+	_ = o2
+
+	err := app.ParseStrict()
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(0)
+	}
+
+	fmt.Println(option1, ":", option2)
+*/
