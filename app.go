@@ -273,7 +273,7 @@ func (a App) parseOneShort(arg string, args []string) ([]string, error) {
 
 func (a App) parseOne(args []string) ([]string, error) {
 	if len(args) == 0 {
-		return nil, errors.New("no arguments")
+		return nil, ErrNoArguments
 	}
 
 	arg := args[0]
