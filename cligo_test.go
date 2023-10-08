@@ -1,7 +1,7 @@
 package cligo_test
 
 import (
-	"cligo/pkg/cligo"
+	"cligo"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
