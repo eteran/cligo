@@ -23,21 +23,26 @@ type Option struct {
 	// A list of the long names without the leading dashes
 	lNames []string
 
-	// A list of the short names  without the leading dashes
+	// A list of the short names without the leading dashes
 	sNames []string
 
-	value            any
-	description      string
-	defaultString    string
-	group            string
-	exists           bool
-	isFlag           bool
-	isPositionalOnly bool
-	isRequired       bool
-	ignoreCase       bool
-	trigger          Trigger
-	needs            []*Option
-	excludes         []*Option
+	// A list of the negated long names without the leading dashes
+	lNamesNeg []string
+
+	// A list of the negated short names without the leading dashes
+	sNamesNeg []string
+
+	value         any
+	description   string
+	defaultString string
+	group         string
+	exists        bool
+	isFlag        bool
+	isRequired    bool
+	ignoreCase    bool
+	trigger       Trigger
+	needs         []*Option
+	excludes      []*Option
 
 	// TODO(eteran):
 	// envname
@@ -113,14 +118,30 @@ func (opt Option) IsPositional() bool {
 	return opt.pName != ""
 }
 
+func (opt Option) IsPositionalOnly() bool {
+	return opt.IsPositional() &&
+		len(opt.lNames) == 0 &&
+		len(opt.sNames) == 0 &&
+		len(opt.lNamesNeg) == 0 &&
+		len(opt.sNamesNeg) == 0
+}
+
 func (opt Option) canonicalName() string {
 
 	if len(opt.lNames) != 0 {
 		return opt.lNames[0]
 	}
 
+	if len(opt.lNamesNeg) != 0 {
+		return opt.lNamesNeg[0]
+	}
+
 	if len(opt.sNames) != 0 {
 		return opt.sNames[0]
+	}
+
+	if len(opt.sNamesNeg) != 0 {
+		return opt.sNamesNeg[0]
 	}
 
 	return opt.pName
@@ -314,12 +335,20 @@ func (opt *Option) zeroFlag() error {
 }
 
 func (opt *Option) format() string {
-	nameList := make([]string, 0, len(opt.sNames)+len(opt.lNames))
+	nameList := make([]string, 0, len(opt.sNames)+len(opt.lNames)+len(opt.sNamesNeg)+len(opt.lNamesNeg))
 	for _, str := range opt.sNames {
 		nameList = append(nameList, "-"+str)
 	}
 
+	for _, str := range opt.sNamesNeg {
+		nameList = append(nameList, "-"+str)
+	}
+
 	for _, str := range opt.lNames {
+		nameList = append(nameList, "--"+str)
+	}
+
+	for _, str := range opt.lNamesNeg {
 		nameList = append(nameList, "--"+str)
 	}
 

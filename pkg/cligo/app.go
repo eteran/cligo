@@ -11,9 +11,8 @@ import (
 )
 
 type app struct {
-	options    []*Option
-	negOptions []*Option
-	groups     map[string][]*Option
+	options []*Option
+	groups  map[string][]*Option
 }
 
 func NewApp() app {
@@ -68,7 +67,7 @@ func (a app) Usage() {
 		fmt.Println("")
 		fmt.Printf("%s:\n", groupName)
 		for _, opt := range group {
-			if !opt.isPositionalOnly {
+			if !opt.IsPositionalOnly() {
 				fmt.Println(opt.format())
 			}
 		}
@@ -81,26 +80,6 @@ func (a app) Usage() {
 	os.Exit(0)
 }
 
-func (a *app) addLongOption(name string, opt *Option, isNegated bool) {
-
-	opt.lNames = append(opt.lNames, name)
-	opt.isPositionalOnly = false
-
-	if isNegated {
-		a.negOptions = append(a.negOptions, opt)
-	}
-}
-
-func (a *app) addShortOption(name string, opt *Option, isNegated bool) {
-
-	opt.sNames = append(opt.sNames, name)
-	opt.isPositionalOnly = false
-
-	if isNegated {
-		a.negOptions = append(a.negOptions, opt)
-	}
-}
-
 func (a *app) AddOption(name string, value any, help string, modifiers ...Modifier) *Option {
 	if value == nil {
 		panic("bound variables cannot be nil")
@@ -111,11 +90,10 @@ func (a *app) AddOption(name string, value any, help string, modifiers ...Modifi
 	}
 
 	opt := &Option{
-		description:      help,
-		value:            value,
-		isFlag:           false,
-		isPositionalOnly: true,
-		group:            "Options",
+		description: help,
+		value:       value,
+		isFlag:      false,
+		group:       "Options",
 	}
 
 	for _, mod := range modifiers {
@@ -141,10 +119,18 @@ func (a *app) AddOption(name string, value any, help string, modifiers ...Modifi
 
 		if isLong {
 			lName := optionName[2:]
-			a.addLongOption(lName, opt, false)
+			if isNegated {
+				opt.lNamesNeg = append(opt.lNamesNeg, lName)
+			} else {
+				opt.lNames = append(opt.lNames, lName)
+			}
 		} else if isShort {
 			sName := optionName[1:]
-			a.addShortOption(sName, opt, false)
+			if isNegated {
+				opt.sNamesNeg = append(opt.sNamesNeg, sName)
+			} else {
+				opt.sNames = append(opt.sNames, sName)
+			}
 		} else if isPositional {
 			opt.pName = optionName
 		}
@@ -209,10 +195,18 @@ func (a *app) AddFlag(name string, value any, help string, modifiers ...Modifier
 
 		if isLong {
 			lName := flagName[2:]
-			a.addLongOption(lName, opt, isNegated)
+			if isNegated {
+				opt.lNamesNeg = append(opt.lNamesNeg, lName)
+			} else {
+				opt.lNames = append(opt.lNames, lName)
+			}
 		} else if isShort {
 			sName := flagName[1:]
-			a.addShortOption(sName, opt, isNegated)
+			if isNegated {
+				opt.sNamesNeg = append(opt.sNamesNeg, sName)
+			} else {
+				opt.sNames = append(opt.sNames, sName)
+			}
 		} else if isPositional {
 			panic("positional arguments must not be flags")
 		}
@@ -225,10 +219,12 @@ func (a *app) AddFlag(name string, value any, help string, modifiers ...Modifier
 
 func (a app) findLongOption(name string) (opt *Option, isNegated bool, exists bool) {
 
-	// search negated first because the name will be found
-	// in the normal list too
-	for _, opt := range a.negOptions {
+	for _, opt := range a.options {
 		if slices.Contains(opt.lNames, name) {
+			return opt, false, true
+		}
+
+		if slices.Contains(opt.lNamesNeg, name) {
 			return opt, true, true
 		}
 
@@ -237,22 +233,13 @@ func (a app) findLongOption(name string) (opt *Option, isNegated bool, exists bo
 			if slices.ContainsFunc(opt.lNames, func(str string) bool {
 				return lName == strings.ToLower(str)
 			}) {
-				return opt, true, true
+				return opt, false, true
 			}
-		}
-	}
 
-	for _, opt := range a.options {
-		if slices.Contains(opt.lNames, name) {
-			return opt, false, true
-		}
-
-		if opt.ignoreCase {
-			lName := strings.ToLower(name)
-			if slices.ContainsFunc(opt.lNames, func(str string) bool {
+			if slices.ContainsFunc(opt.lNamesNeg, func(str string) bool {
 				return lName == strings.ToLower(str)
 			}) {
-				return opt, false, true
+				return opt, true, true
 			}
 		}
 	}
@@ -312,10 +299,12 @@ func (a app) parseOneLong(arg string, args []string) ([]string, error) {
 
 func (a app) findShortOption(name string) (opt *Option, isNegated bool, exists bool) {
 
-	// search negated first because the name will be found
-	// in the normal list too
-	for _, opt := range a.negOptions {
+	for _, opt := range a.options {
 		if slices.Contains(opt.sNames, name) {
+			return opt, false, true
+		}
+
+		if slices.Contains(opt.sNamesNeg, name) {
 			return opt, true, true
 		}
 
@@ -324,22 +313,13 @@ func (a app) findShortOption(name string) (opt *Option, isNegated bool, exists b
 			if slices.ContainsFunc(opt.sNames, func(str string) bool {
 				return lName == strings.ToLower(str)
 			}) {
-				return opt, true, true
+				return opt, false, true
 			}
-		}
-	}
 
-	for _, opt := range a.options {
-		if slices.Contains(opt.sNames, name) {
-			return opt, false, true
-		}
-
-		if opt.ignoreCase {
-			lName := strings.ToLower(name)
-			if slices.ContainsFunc(opt.sNames, func(str string) bool {
+			if slices.ContainsFunc(opt.sNamesNeg, func(str string) bool {
 				return lName == strings.ToLower(str)
 			}) {
-				return opt, false, true
+				return opt, true, true
 			}
 		}
 	}

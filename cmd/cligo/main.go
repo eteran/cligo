@@ -18,7 +18,7 @@ func main() {
 	o1 := app.AddOption("-a,--alpha", &option1, "Option1")
 	app.AddOption("-b,--beta", &option2, "Option2", Excludes(o1))
 	app.AddOption("pos1", &option3, "option3")
-	app.AddOption("pos2", &option4, "option4")
+	app.AddFlag("--pos2,!--no-pos", &option4, "option4")
 
 	err := app.ParseStrict()
 	if err != nil {
