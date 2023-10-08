@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"reflect"
 	"strings"
 
 	"golang.org/x/exp/slices"
@@ -21,8 +20,8 @@ func NewApp() app {
 	}
 }
 
-func valueTypeString(opt *Option) string {
-	switch opt.value.(type) {
+func pointerType(ptr any) string {
+	switch ptr.(type) {
 	case *int, *int8, *int16, *int32, *int64, *uint, *uint8, *uint16, *uint32, *uint64:
 		return " NUMBER"
 	case *string:
@@ -66,152 +65,56 @@ func (a app) Usage() {
 	for groupName, group := range a.groups {
 		fmt.Println("")
 		fmt.Printf("%s:\n", groupName)
+
+		if groupName == "Options" {
+			fmt.Printf("  %-30s %s\n", "-h,--help", "Print this help message and exit")
+		}
+
 		for _, opt := range group {
 			if !opt.IsPositionalOnly() {
 				fmt.Println(opt.format())
 			}
-		}
-
-		if groupName == "Options" {
-			fmt.Printf("  %-30s %s\n", "-h,--help", "Print this help message and exit")
 		}
 	}
 
 	os.Exit(0)
 }
 
-func (a *app) AddOption(name string, value any, help string, modifiers ...Modifier) *Option {
-	if value == nil {
-		panic("bound variables cannot be nil")
-	}
-
-	if reflect.TypeOf(value).Kind() != reflect.Ptr {
-		panic("bound variables must be pointers")
-	}
-
-	opt := &Option{
-		description: help,
-		value:       value,
-		isFlag:      false,
-		group:       "Options",
-	}
-
-	for _, mod := range modifiers {
-		mod(opt)
-	}
-
-	name = strings.TrimSpace(name)
-	names := strings.Split(name, ",")
-	for _, optionName := range names {
-
-		if optionName == "" {
-			panic("argument has empty name, do you have a trailing comma?")
-		}
-
-		isNegated := strings.HasPrefix(optionName, "!")
-		if isNegated {
-			panic("only flags can be negated")
-		}
-
-		isLong := strings.HasPrefix(optionName, "--")
-		isShort := !isLong && strings.HasPrefix(optionName, "-")
-		isPositional := !isLong && !isShort
-
-		if isLong {
-			lName := optionName[2:]
-			if isNegated {
-				opt.lNamesNeg = append(opt.lNamesNeg, lName)
-			} else {
-				opt.lNames = append(opt.lNames, lName)
-			}
-		} else if isShort {
-			sName := optionName[1:]
-			if isNegated {
-				opt.sNamesNeg = append(opt.sNamesNeg, sName)
-			} else {
-				opt.sNames = append(opt.sNames, sName)
-			}
-		} else if isPositional {
-			opt.pName = optionName
+func setOption(ptr any, v string, isNegated bool) error {
+	if ptr != nil {
+		if err := setValue(ptr, v); err != nil {
+			return err
 		}
 	}
+	return nil
+}
 
+func (a *app) AddOption(name string, ptr any, help string, modifiers ...Modifier) *Option {
+
+	opt := NewOption(name, ptr, help, modifiers...)
 	a.options = append(a.options, opt)
 	a.groups[opt.group] = append(a.groups[opt.group], opt)
 	return opt
 }
 
-func ensureIntegralPointer(value any) {
-	ty := reflect.TypeOf(value)
-	if ty.Kind() != reflect.Ptr {
-		panic("bound variables must be pointers")
+func setFlag(ptr any, v string, isNegated bool) error {
+	if ptr != nil {
+		if v == "" {
+			if err := incrementFlag(ptr, isNegated); err != nil {
+				return err
+			}
+		} else {
+			if err := setValue(ptr, v); err != nil {
+				return err
+			}
+		}
 	}
-
-	switch ty.Elem().Kind() {
-	case reflect.Bool,
-		reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
-		reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-		break
-	default:
-		panic("flags may only be boolean or integral types")
-	}
+	return nil
 }
 
-func (a *app) AddFlag(name string, value any, help string, modifiers ...Modifier) *Option {
+func (a *app) AddFlag(name string, ptr any, help string, modifiers ...Modifier) *Option {
 
-	if value == nil {
-		panic("bound variables cannot be nil")
-	}
-
-	ensureIntegralPointer(value)
-
-	opt := &Option{
-		description: help,
-		value:       value,
-		isFlag:      true,
-		group:       "Options",
-	}
-
-	for _, mod := range modifiers {
-		mod(opt)
-	}
-
-	name = strings.TrimSpace(name)
-	names := strings.Split(name, ",")
-	for _, flagName := range names {
-
-		if flagName == "" {
-			panic("argument has empty name, do you have a trailing comma?")
-		}
-
-		isNegated := strings.HasPrefix(flagName, "!")
-		if isNegated {
-			flagName = flagName[1:]
-		}
-
-		isLong := strings.HasPrefix(flagName, "--")
-		isShort := !isLong && strings.HasPrefix(flagName, "-")
-		isPositional := !isLong && !isShort
-
-		if isLong {
-			lName := flagName[2:]
-			if isNegated {
-				opt.lNamesNeg = append(opt.lNamesNeg, lName)
-			} else {
-				opt.lNames = append(opt.lNames, lName)
-			}
-		} else if isShort {
-			sName := flagName[1:]
-			if isNegated {
-				opt.sNamesNeg = append(opt.sNamesNeg, sName)
-			} else {
-				opt.sNames = append(opt.sNames, sName)
-			}
-		} else if isPositional {
-			panic("positional arguments must not be flags")
-		}
-	}
-
+	opt := NewFlag(name, ptr, help, modifiers...)
 	a.options = append(a.options, opt)
 	a.groups[opt.group] = append(a.groups[opt.group], opt)
 	return opt
@@ -269,16 +172,8 @@ func (a app) parseOneLong(arg string, args []string) ([]string, error) {
 	}
 
 	if opt.isFlag {
-		if param == "" {
-			if err := opt.incrementFlag(isNegated); err != nil {
-				return nil, err
-			}
-			return args, nil
-		} else {
-			if err := opt.setValue(param); err != nil {
-				return nil, err
-			}
-			return args, nil
+		if err := opt.setter(opt, param, isNegated); err != nil {
+			return nil, err
 		}
 	} else {
 		if param == "" {
@@ -289,7 +184,7 @@ func (a app) parseOneLong(arg string, args []string) ([]string, error) {
 			args = args[1:]
 		}
 
-		if err := opt.setValue(param); err != nil {
+		if err := opt.setter(opt, param, isNegated); err != nil {
 			return nil, err
 		}
 	}
@@ -348,7 +243,7 @@ func (a app) parseOneShort(arg string, args []string) ([]string, error) {
 
 		isLast := i == len(name)-1
 		if opt.isFlag {
-			if err := opt.incrementFlag(isNegated); err != nil {
+			if err := opt.setter(opt, "", isNegated); err != nil {
 				return nil, err
 			}
 		} else if isLast {
@@ -359,12 +254,12 @@ func (a app) parseOneShort(arg string, args []string) ([]string, error) {
 			param := args[0]
 			args = args[1:]
 
-			if err := opt.setValue(param); err != nil {
+			if err := opt.setter(opt, param, isNegated); err != nil {
 				return nil, err
 			}
 		} else {
 			param := name[1+i:]
-			if err := opt.setValue(param); err != nil {
+			if err := opt.setter(opt, param, isNegated); err != nil {
 				return nil, err
 			}
 			break
@@ -423,9 +318,10 @@ func (a app) parsePositional(args []string) ([]string, error) {
 			break
 		}
 
-		if err := opt.setValue(args[0]); err != nil {
+		if err := opt.setter(opt, args[0], false); err != nil {
 			return nil, err
 		}
+
 		args = args[1:]
 	}
 
@@ -471,11 +367,32 @@ func (a app) ParseArgs(args []string) ([]string, error) {
 		return nil, err
 	}
 
+	if err := a.assignDefaults(); err != nil {
+		return nil, err
+	}
+
 	if err := a.validateOptions(); err != nil {
 		return nil, err
 	}
 
 	return args, nil
+}
+
+func (a app) assignDefaults() error {
+	for _, opt := range a.options {
+		if !opt.exists && opt.defaultString != "" {
+			if opt.isFlag {
+				if err := setFlag(opt.value, opt.defaultString, false); err != nil {
+					return err
+				}
+			} else {
+				if err := setOption(opt.value, opt.defaultString, false); err != nil {
+					return err
+				}
+			}
+		}
+	}
+	return nil
 }
 
 func (a app) validateOptions() error {
@@ -484,15 +401,17 @@ func (a app) validateOptions() error {
 			return fmt.Errorf("%s is required\n%s", opt.canonicalName(), ErrorSuffix)
 		}
 
-		for _, need := range opt.needs {
-			if !need.exists {
-				return fmt.Errorf("%s requires %s\n%s", opt.canonicalName(), need.canonicalName(), ErrorSuffix)
+		if opt.exists {
+			for _, need := range opt.needs {
+				if !need.exists {
+					return fmt.Errorf("%s requires %s\n%s", opt.canonicalName(), need.canonicalName(), ErrorSuffix)
+				}
 			}
-		}
 
-		for _, exclude := range opt.excludes {
-			if exclude.exists {
-				return fmt.Errorf("%s excludes %s\n%s", opt.canonicalName(), exclude.canonicalName(), ErrorSuffix)
+			for _, exclude := range opt.excludes {
+				if exclude.exists {
+					return fmt.Errorf("%s excludes %s\n%s", opt.canonicalName(), exclude.canonicalName(), ErrorSuffix)
+				}
 			}
 		}
 	}

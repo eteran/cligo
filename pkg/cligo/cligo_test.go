@@ -328,8 +328,7 @@ func TestExcludesError(t *testing.T) {
 	var option2 string
 
 	o1 := app.AddOption("-a,--alpha", &option1, "Option1")
-	o2 := app.AddOption("-b,--beta", &option2, "Option2", cligo.Excludes(o1))
-	_ = o2
+	app.AddOption("-b,--beta", &option2, "Option2", cligo.Excludes(o1))
 
 	args := []string{"--beta=world", "--alpha=hello"}
 	err := app.ParseArgsStrict(args)
@@ -344,8 +343,7 @@ func TestExcludes(t *testing.T) {
 	var option2 string
 
 	o1 := app.AddOption("-a,--alpha", &option1, "Option1")
-	o2 := app.AddOption("-b,--beta", &option2, "Option2", cligo.Needs(o1))
-	_ = o2
+	app.AddOption("-b,--beta", &option2, "Option2", cligo.Excludes(o1))
 
 	args := []string{"--alpha=hello"}
 	err := app.ParseArgsStrict(args)

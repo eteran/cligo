@@ -40,15 +40,18 @@ type Option struct {
 	isFlag        bool
 	isRequired    bool
 	ignoreCase    bool
-	trigger       Trigger
 	needs         []*Option
 	excludes      []*Option
+	onSet         Callback
+	setter        Setter
 
 	// TODO(eteran):
 	// envname
 }
 
-type Trigger func(opt *Option)
+type Setter func(opt *Option, value string, isNegated bool) error
+
+type Callback func(app *app, opt *Option)
 
 type Modifier func(opt *Option)
 
@@ -83,17 +86,15 @@ func SetGroup(group string) Modifier {
 	}
 }
 
-func SetTrigger(trigger Trigger) Modifier {
+func SetTrigger(trigger Callback) Modifier {
 	return func(opt *Option) {
-		opt.trigger = trigger
+		opt.onSet = trigger
 	}
 }
 
 func SetDefault(value string) Modifier {
 	return func(opt *Option) {
-		if err := opt.setValue(value); err != nil {
-			panic("failed to set default")
-		}
+		// TODO(eteran): make this have an effect
 		opt.defaultString = value
 	}
 }
@@ -147,9 +148,8 @@ func (opt Option) canonicalName() string {
 	return opt.pName
 }
 
-func (opt *Option) setValue(value string) error {
+func setValue(ptr any, value string) error {
 
-	ptr := opt.value
 	switch p := ptr.(type) {
 	case *int:
 		n, err := parseIntOrBool[int](value, 0)
@@ -222,11 +222,6 @@ func (opt *Option) setValue(value string) error {
 	default:
 		return ErrUnsupportedType
 	}
-
-	opt.exists = true
-	if opt.trigger != nil {
-		opt.trigger(opt)
-	}
 	return nil
 }
 
@@ -256,13 +251,12 @@ func parseIntOrBool[T Signed](s string, bitSize int) (T, error) {
 	return T(i), err
 }
 
-func (opt *Option) incrementFlag(isNegated bool) error {
+func incrementFlag(ptr any, isNegated bool) error {
 
 	if isNegated {
-		return opt.zeroFlag()
+		return zeroFlag(ptr)
 	}
 
-	ptr := opt.value
 	switch p := ptr.(type) {
 	case *int:
 		*p++
@@ -289,17 +283,11 @@ func (opt *Option) incrementFlag(isNegated bool) error {
 	default:
 		return ErrUnsupportedType
 	}
-
-	opt.exists = true
-	if opt.trigger != nil {
-		opt.trigger(opt)
-	}
 	return nil
 }
 
-func (opt *Option) zeroFlag() error {
+func zeroFlag(ptr any) error {
 
-	ptr := opt.value
 	switch p := ptr.(type) {
 	case *int:
 		*p = 0
@@ -326,11 +314,6 @@ func (opt *Option) zeroFlag() error {
 	default:
 		return ErrUnsupportedType
 	}
-
-	opt.exists = true
-	if opt.trigger != nil {
-		opt.trigger(opt)
-	}
 	return nil
 }
 
@@ -353,7 +336,7 @@ func (opt *Option) format() string {
 	}
 
 	names := strings.Join(nameList, ",")
-	names = names + valueTypeString(opt)
+	names = names + pointerType(opt.value)
 
 	if opt.defaultString != "" {
 		names = names + fmt.Sprintf(" [%s]", opt.defaultString)
@@ -367,7 +350,7 @@ func (opt *Option) format() string {
 
 func (opt *Option) formatPositional() string {
 	name := opt.pName
-	name = name + valueTypeString(opt)
+	name = name + pointerType(opt.value)
 
 	if opt.defaultString != "" {
 		name = name + fmt.Sprintf(" [%s]", opt.defaultString)
@@ -377,4 +360,158 @@ func (opt *Option) formatPositional() string {
 		name = name + " REQUIRED"
 	}
 	return fmt.Sprintf("  %-30s %s", name, opt.description)
+}
+
+func NewOption(name string, ptr any, help string, modifiers ...Modifier) *Option {
+	if ptr != nil {
+		if reflect.TypeOf(ptr).Kind() != reflect.Ptr {
+			panic("bound variables must be pointers")
+		}
+	}
+
+	opt := &Option{
+		description: help,
+		isFlag:      false,
+		group:       "Options",
+		value:       ptr,
+		setter: func(opt *Option, v string, isNegated bool) error {
+
+			if err := setOption(ptr, v, isNegated); err != nil {
+				return err
+			}
+
+			opt.exists = true
+			if opt.onSet != nil {
+				opt.onSet(nil, opt)
+			}
+			return nil
+		},
+	}
+
+	for _, mod := range modifiers {
+		mod(opt)
+	}
+
+	name = strings.TrimSpace(name)
+	names := strings.Split(name, ",")
+	for _, optionName := range names {
+
+		if optionName == "" {
+			panic("argument has empty name, do you have a trailing comma?")
+		}
+
+		isNegated := strings.HasPrefix(optionName, "!")
+		if isNegated {
+			panic("only flags can be negated")
+		}
+
+		isLong := strings.HasPrefix(optionName, "--")
+		isShort := !isLong && strings.HasPrefix(optionName, "-")
+		isPositional := !isLong && !isShort
+
+		if isLong {
+			lName := optionName[2:]
+			if isNegated {
+				opt.lNamesNeg = append(opt.lNamesNeg, lName)
+			} else {
+				opt.lNames = append(opt.lNames, lName)
+			}
+		} else if isShort {
+			sName := optionName[1:]
+			if isNegated {
+				opt.sNamesNeg = append(opt.sNamesNeg, sName)
+			} else {
+				opt.sNames = append(opt.sNames, sName)
+			}
+		} else if isPositional {
+			opt.pName = optionName
+		}
+	}
+
+	return opt
+}
+
+func NewFlag(name string, ptr any, help string, modifiers ...Modifier) *Option {
+
+	ensureIntegralPointer(ptr)
+
+	opt := &Option{
+		description: help,
+		isFlag:      true,
+		value:       ptr,
+		group:       "Options",
+		setter: func(opt *Option, v string, isNegated bool) error {
+
+			if err := setFlag(ptr, v, isNegated); err != nil {
+				return err
+			}
+
+			opt.exists = true
+			if opt.onSet != nil {
+				opt.onSet(nil, opt)
+			}
+
+			return nil
+		},
+	}
+
+	for _, mod := range modifiers {
+		mod(opt)
+	}
+
+	name = strings.TrimSpace(name)
+	names := strings.Split(name, ",")
+	for _, flagName := range names {
+
+		if flagName == "" {
+			panic("argument has empty name, do you have a trailing comma?")
+		}
+
+		isNegated := strings.HasPrefix(flagName, "!")
+		if isNegated {
+			flagName = flagName[1:]
+		}
+
+		isLong := strings.HasPrefix(flagName, "--")
+		isShort := !isLong && strings.HasPrefix(flagName, "-")
+		isPositional := !isLong && !isShort
+
+		if isLong {
+			lName := flagName[2:]
+			if isNegated {
+				opt.lNamesNeg = append(opt.lNamesNeg, lName)
+			} else {
+				opt.lNames = append(opt.lNames, lName)
+			}
+		} else if isShort {
+			sName := flagName[1:]
+			if isNegated {
+				opt.sNamesNeg = append(opt.sNamesNeg, sName)
+			} else {
+				opt.sNames = append(opt.sNames, sName)
+			}
+		} else if isPositional {
+			panic("positional arguments must not be flags")
+		}
+	}
+
+	return opt
+}
+
+func ensureIntegralPointer(ptr any) {
+	if ptr != nil {
+		ty := reflect.TypeOf(ptr)
+		if ty.Kind() != reflect.Ptr {
+			panic("bound variables must be pointers")
+		}
+
+		switch ty.Elem().Kind() {
+		case reflect.Bool,
+			reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
+			reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+			break
+		default:
+			panic("flags may only be boolean or integral types")
+		}
+	}
 }
