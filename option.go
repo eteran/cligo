@@ -32,11 +32,12 @@ type Option struct {
 	// A list of the negated short names without the leading dashes
 	sNamesNeg []string
 
-	value         any
+	app           *App
+	count         int
+	ptr           any
 	description   string
 	defaultString string
 	group         string
-	exists        bool
 	isFlag        bool
 	isRequired    bool
 	ignoreCase    bool
@@ -51,7 +52,7 @@ type Option struct {
 
 type Setter func(opt *Option, value string, isNegated bool) error
 
-type Callback func(app *app, opt *Option)
+type Callback func(opt *Option)
 
 type Modifier func(opt *Option)
 
@@ -80,39 +81,36 @@ func IgnoreCase() Modifier {
 	}
 }
 
-func SetGroup(group string) Modifier {
+func Group(group string) Modifier {
 	return func(opt *Option) {
 		opt.group = group
 	}
 }
 
-func SetTrigger(trigger Callback) Modifier {
+func Trigger(trigger Callback) Modifier {
 	return func(opt *Option) {
 		opt.onSet = trigger
 	}
 }
 
-func SetDefault(value string) Modifier {
+func DefaultString(value string) Modifier {
 	return func(opt *Option) {
-		// TODO(eteran): make this have an effect
 		opt.defaultString = value
 	}
 }
 
-func IsNil(i any) bool {
-	if i == nil {
-		return true
+func CaptureDefault() Modifier {
+	return func(opt *Option) {
+		opt.defaultString = getValue(opt.ptr)
 	}
-
-	switch reflect.TypeOf(i).Kind() {
-	case reflect.Ptr, reflect.Map, reflect.Array, reflect.Chan, reflect.Slice:
-		return reflect.ValueOf(i).IsNil()
-	}
-	return false
 }
 
 func (opt Option) Exists() bool {
-	return opt.exists
+	return opt.count > 0
+}
+
+func (opt Option) Count() int {
+	return opt.count
 }
 
 func (opt Option) IsPositional() bool {
@@ -146,6 +144,37 @@ func (opt Option) canonicalName() string {
 	}
 
 	return opt.pName
+}
+
+func getValue(ptr any) string {
+	switch p := ptr.(type) {
+	case *int:
+		return strconv.FormatInt(int64(*p), 10)
+	case *int8:
+		return strconv.FormatInt(int64(*p), 10)
+	case *int16:
+		return strconv.FormatInt(int64(*p), 10)
+	case *int32:
+		return strconv.FormatInt(int64(*p), 10)
+	case *int64:
+		return strconv.FormatInt(int64(*p), 10)
+	case *uint:
+		return strconv.FormatUint(uint64(*p), 10)
+	case *uint8:
+		return strconv.FormatUint(uint64(*p), 10)
+	case *uint16:
+		return strconv.FormatUint(uint64(*p), 10)
+	case *uint32:
+		return strconv.FormatUint(uint64(*p), 10)
+	case *uint64:
+		return strconv.FormatUint(uint64(*p), 10)
+	case *bool:
+		return strconv.FormatBool(*p)
+	case *string:
+		return *p
+	default:
+		return ""
+	}
 }
 
 func setValue(ptr any, value string) error {
@@ -254,7 +283,7 @@ func parseIntOrBool[T Signed](s string, bitSize int) (T, error) {
 func incrementFlag(ptr any, isNegated bool) error {
 
 	if isNegated {
-		return zeroFlag(ptr)
+		return decrementFlag(ptr)
 	}
 
 	switch p := ptr.(type) {
@@ -286,29 +315,29 @@ func incrementFlag(ptr any, isNegated bool) error {
 	return nil
 }
 
-func zeroFlag(ptr any) error {
+func decrementFlag(ptr any) error {
 
 	switch p := ptr.(type) {
 	case *int:
-		*p = 0
+		*p--
 	case *int8:
-		*p = 0
+		*p--
 	case *int16:
-		*p = 0
+		*p--
 	case *int32:
-		*p = 0
+		*p--
 	case *int64:
-		*p = 0
+		*p--
 	case *uint:
-		*p = 0
+		*p--
 	case *uint8:
-		*p = 0
+		*p--
 	case *uint16:
-		*p = 0
+		*p--
 	case *uint32:
-		*p = 0
+		*p--
 	case *uint64:
-		*p = 0
+		*p--
 	case *bool:
 		*p = false
 	default:
@@ -336,7 +365,7 @@ func (opt *Option) format() string {
 	}
 
 	names := strings.Join(nameList, ",")
-	names = names + pointerType(opt.value)
+	names = names + pointerType(opt.ptr)
 
 	if opt.defaultString != "" {
 		names = names + fmt.Sprintf(" [%s]", opt.defaultString)
@@ -350,7 +379,7 @@ func (opt *Option) format() string {
 
 func (opt *Option) formatPositional() string {
 	name := opt.pName
-	name = name + pointerType(opt.value)
+	name = name + pointerType(opt.ptr)
 
 	if opt.defaultString != "" {
 		name = name + fmt.Sprintf(" [%s]", opt.defaultString)
@@ -373,16 +402,16 @@ func NewOption(name string, ptr any, help string, modifiers ...Modifier) *Option
 		description: help,
 		isFlag:      false,
 		group:       "Options",
-		value:       ptr,
+		ptr:         ptr,
 		setter: func(opt *Option, v string, isNegated bool) error {
 
-			if err := setOption(opt.value, v, isNegated); err != nil {
+			if err := setOption(opt.ptr, v, isNegated); err != nil {
 				return err
 			}
 
-			opt.exists = true
+			opt.count++
 			if opt.onSet != nil {
-				opt.onSet(nil, opt)
+				opt.onSet(opt)
 			}
 			return nil
 		},
@@ -438,17 +467,17 @@ func NewFlag(name string, ptr any, help string, modifiers ...Modifier) *Option {
 	opt := &Option{
 		description: help,
 		isFlag:      true,
-		value:       ptr,
+		ptr:         ptr,
 		group:       "Options",
 		setter: func(opt *Option, v string, isNegated bool) error {
 
-			if err := setFlag(opt.value, v, isNegated); err != nil {
+			if err := setFlag(opt.ptr, v, isNegated); err != nil {
 				return err
 			}
 
-			opt.exists = true
+			opt.count++
 			if opt.onSet != nil {
-				opt.onSet(nil, opt)
+				opt.onSet(opt)
 			}
 
 			return nil

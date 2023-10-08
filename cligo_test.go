@@ -1,7 +1,11 @@
 package cligo_test
 
 import (
+	"bytes"
 	"cligo"
+	"io"
+	"os"
+	"os/exec"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -18,7 +22,7 @@ func TestFlagShort(t *testing.T) {
 	args := []string{"-v"}
 	err := app.ParseArgsStrict(args)
 	if assert.NoError(t, err) {
-		assert.Equal(t, verbose, true)
+		assert.Equal(t, true, verbose)
 	}
 }
 
@@ -33,7 +37,7 @@ func TestFlagLong(t *testing.T) {
 	args := []string{"--verbose"}
 	err := app.ParseArgsStrict(args)
 	if assert.NoError(t, err) {
-		assert.Equal(t, verbose, true)
+		assert.Equal(t, true, verbose)
 	}
 }
 
@@ -48,7 +52,7 @@ func TestFlagLongEqual(t *testing.T) {
 	args := []string{"--verbose=true"}
 	err := app.ParseArgsStrict(args)
 	if assert.NoError(t, err) {
-		assert.Equal(t, verbose, true)
+		assert.Equal(t, true, verbose)
 	}
 }
 
@@ -63,7 +67,7 @@ func TestFlagLongEqualInteger(t *testing.T) {
 	args := []string{"--count=9000"}
 	err := app.ParseArgsStrict(args)
 	if assert.NoError(t, err) {
-		assert.Equal(t, count, 9000)
+		assert.Equal(t, 9000, count)
 	}
 }
 
@@ -71,13 +75,12 @@ func TestFlagShortRepeated(t *testing.T) {
 	t.Parallel()
 	app := cligo.NewApp()
 
-	var verbose int
-	app.AddFlag("-v,--verbose", &verbose, "increase verbosity")
+	opt := app.AddFlag("-v,--verbose", nil, "increase verbosity")
 
 	args := []string{"-vvvv"}
 	err := app.ParseArgsStrict(args)
 	if assert.NoError(t, err) {
-		assert.Equal(t, verbose, 4)
+		assert.Equal(t, 4, opt.Count())
 	}
 }
 
@@ -85,13 +88,12 @@ func TestFlagLongRepeated(t *testing.T) {
 	t.Parallel()
 	app := cligo.NewApp()
 
-	var verbose int
-	app.AddFlag("-v,--verbose", &verbose, "increase verbosity")
+	opt := app.AddFlag("-v,--verbose", nil, "increase verbosity")
 
 	args := []string{"--verbose", "--verbose", "--verbose"}
 	err := app.ParseArgsStrict(args)
 	if assert.NoError(t, err) {
-		assert.Equal(t, verbose, 3)
+		assert.Equal(t, 3, opt.Count())
 	}
 }
 
@@ -100,12 +102,12 @@ func TestFlagsRepeatedMixed(t *testing.T) {
 	app := cligo.NewApp()
 
 	var verbose int
-	app.AddFlag("-v,--verbose", &verbose, "increase verbosity")
+	opt := app.AddFlag("-v,--verbose", &verbose, "increase verbosity")
 
-	args := []string{"--verbose", "-v", "--verbose", "-v", "--verbose"}
+	args := []string{"--verbose", "-v", "--verbose", "-v", "--verbose=false"}
 	err := app.ParseArgsStrict(args)
 	if assert.NoError(t, err) {
-		assert.Equal(t, verbose, 5)
+		assert.Equal(t, 5, opt.Count())
 	}
 }
 
@@ -124,9 +126,9 @@ func TestFlagCombined(t *testing.T) {
 	args := []string{"-ag"}
 	err := app.ParseArgsStrict(args)
 	if assert.NoError(t, err) {
-		assert.Equal(t, v1, true)
-		assert.Equal(t, v2, false)
-		assert.Equal(t, v3, true)
+		assert.Equal(t, true, v1)
+		assert.Equal(t, false, v2)
+		assert.Equal(t, true, v3)
 	}
 }
 
@@ -147,10 +149,10 @@ func TestFlagOptionCombined(t *testing.T) {
 	args := []string{"-agf", "document.txt"}
 	err := app.ParseArgsStrict(args)
 	if assert.NoError(t, err) {
-		assert.Equal(t, v1, true)
-		assert.Equal(t, v2, false)
-		assert.Equal(t, v3, true)
-		assert.Equal(t, filename, "document.txt")
+		assert.Equal(t, true, v1)
+		assert.Equal(t, false, v2)
+		assert.Equal(t, true, v3)
+		assert.Equal(t, "document.txt", filename)
 	}
 }
 
@@ -184,7 +186,7 @@ func TestOptionShortStringNoSpace(t *testing.T) {
 	args := []string{"-ftest.txt"}
 	err := app.ParseArgsStrict(args)
 	if assert.NoError(t, err) {
-		assert.Equal(t, filename, "test.txt")
+		assert.Equal(t, "test.txt", filename)
 	}
 }
 
@@ -199,7 +201,7 @@ func TestOptionShortStringSpace(t *testing.T) {
 	args := []string{"-f", "test.txt"}
 	err := app.ParseArgsStrict(args)
 	if assert.NoError(t, err) {
-		assert.Equal(t, filename, "test.txt")
+		assert.Equal(t, "test.txt", filename)
 	}
 }
 
@@ -226,7 +228,7 @@ func TestOptionLongStringSpace(t *testing.T) {
 	args := []string{"--file", "test.txt"}
 	err := app.ParseArgsStrict(args)
 	if assert.NoError(t, err) {
-		assert.Equal(t, filename, "test.txt")
+		assert.Equal(t, "test.txt", filename)
 	}
 }
 
@@ -253,7 +255,7 @@ func TestOptionLongStringEqual(t *testing.T) {
 	args := []string{"--file=test.txt"}
 	err := app.ParseArgsStrict(args)
 	if assert.NoError(t, err) {
-		assert.Equal(t, filename, "test.txt")
+		assert.Equal(t, "test.txt", filename)
 	}
 }
 
@@ -267,7 +269,7 @@ func TestOptionLongIntegerEqual(t *testing.T) {
 	args := []string{"--value=42"}
 	err := app.ParseArgsStrict(args)
 	if assert.NoError(t, err) {
-		assert.Equal(t, value, 42)
+		assert.Equal(t, 42, value)
 	}
 }
 
@@ -283,8 +285,8 @@ func TestOptionPositionalString(t *testing.T) {
 	args := []string{"--value=42", "my_destination_file"}
 	err := app.ParseArgsStrict(args)
 	if assert.NoError(t, err) {
-		assert.Equal(t, value, 42)
-		assert.Equal(t, dest, "my_destination_file")
+		assert.Equal(t, 42, value)
+		assert.Equal(t, "my_destination_file", dest)
 	}
 }
 
@@ -380,14 +382,15 @@ func TestNegatedLong(t *testing.T) {
 	t.Parallel()
 	app := cligo.NewApp()
 
-	option1 := 50
+	option1 := 0
 
-	app.AddFlag("-a,--alpha,!--no-alpha", &option1, "Option1", cligo.IgnoreCase())
+	opt := app.AddFlag("-a,--alpha,!--no-alpha", &option1, "Option1")
 
 	args := []string{"--no-alpha"}
 	err := app.ParseArgsStrict(args)
 	if assert.NoError(t, err) {
-		assert.Equal(t, option1, 0)
+		assert.Equal(t, -1, option1)
+		assert.Equal(t, 1, opt.Count())
 	}
 }
 
@@ -395,13 +398,63 @@ func TestNegatedShort(t *testing.T) {
 	t.Parallel()
 	app := cligo.NewApp()
 
-	option1 := 50
+	option1 := 0
 
-	app.AddFlag("-a,--alpha,!--no-alpha,!-n", &option1, "Option1", cligo.IgnoreCase())
+	opt := app.AddFlag("-a,--alpha,!--no-alpha,!-n", &option1, "Option1")
 
 	args := []string{"-n"}
 	err := app.ParseArgsStrict(args)
 	if assert.NoError(t, err) {
-		assert.Equal(t, option1, 0)
+		assert.Equal(t, -1, option1)
+		assert.Equal(t, 1, opt.Count())
 	}
+}
+
+func TestDefault(t *testing.T) {
+	t.Parallel()
+	app := cligo.NewApp()
+
+	option1 := "hello world"
+
+	app.AddOption("-a,--alpha", &option1, "Option1", cligo.DefaultString("hello world"))
+
+	args := []string{}
+	err := app.ParseArgsStrict(args)
+	if assert.NoError(t, err) {
+		assert.Equal(t, "hello world", option1)
+	}
+}
+
+func TestCaptureDefault(t *testing.T) {
+	// This one is tricky because the testing support doesn't allow for os.Exit
+	t.Parallel()
+
+	if os.Getenv("BE_CRASHER") == "1" {
+		app := cligo.NewApp()
+
+		option1 := "hello world"
+
+		app.AddOption("-a,--alpha", &option1, "Option1", cligo.CaptureDefault())
+
+		args := []string{"--help"}
+		err := app.ParseArgsStrict(args)
+
+		if assert.NoError(t, err) {
+			assert.Equal(t, "hello world", option1)
+		}
+		return
+	}
+
+	cmd := exec.Command(os.Args[0], "-test.run=TestCaptureDefault")
+	var outb bytes.Buffer
+	cmd.Stdout = &outb
+	cmd.Env = append(os.Environ(), "BE_CRASHER=1")
+	err := cmd.Run()
+	if assert.NoError(t, err) {
+		out, err := io.ReadAll(&outb)
+		if assert.NoError(t, err) {
+			assert.Contains(t, string(out), "[hello world]")
+		}
+	}
+
 }

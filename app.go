@@ -9,13 +9,13 @@ import (
 	"golang.org/x/exp/slices"
 )
 
-type app struct {
+type App struct {
 	options []*Option
 	groups  map[string][]*Option
 }
 
-func NewApp() app {
-	return app{
+func NewApp() App {
+	return App{
 		groups: make(map[string][]*Option),
 	}
 }
@@ -42,7 +42,7 @@ func filterFunc[T any](slice []T, f func(T) bool) []T {
 	return result
 }
 
-func (a app) Usage() {
+func (a App) Usage() {
 	fmt.Printf("Usage: %s [OPTIONS]", os.Args[0])
 
 	positionals := filterFunc(a.options, func(opt *Option) bool {
@@ -89,9 +89,10 @@ func setOption(ptr any, v string, isNegated bool) error {
 	return nil
 }
 
-func (a *app) AddOption(name string, ptr any, help string, modifiers ...Modifier) *Option {
+func (a *App) AddOption(name string, ptr any, help string, modifiers ...Modifier) *Option {
 
 	opt := NewOption(name, ptr, help, modifiers...)
+	opt.app = a
 	a.options = append(a.options, opt)
 	a.groups[opt.group] = append(a.groups[opt.group], opt)
 	return opt
@@ -112,15 +113,16 @@ func setFlag(ptr any, v string, isNegated bool) error {
 	return nil
 }
 
-func (a *app) AddFlag(name string, ptr any, help string, modifiers ...Modifier) *Option {
+func (a *App) AddFlag(name string, ptr any, help string, modifiers ...Modifier) *Option {
 
 	opt := NewFlag(name, ptr, help, modifiers...)
+	opt.app = a
 	a.options = append(a.options, opt)
 	a.groups[opt.group] = append(a.groups[opt.group], opt)
 	return opt
 }
 
-func (a app) findLongOption(name string) (opt *Option, isNegated bool, exists bool) {
+func (a App) findLongOption(name string) (opt *Option, isNegated bool, exists bool) {
 
 	for _, opt := range a.options {
 		if slices.Contains(opt.lNames, name) {
@@ -150,7 +152,7 @@ func (a app) findLongOption(name string) (opt *Option, isNegated bool, exists bo
 	return nil, false, false
 }
 
-func (a app) parseOneLong(arg string, args []string) ([]string, error) {
+func (a App) parseOneLong(arg string, args []string) ([]string, error) {
 	/*
 		--file filename (space)
 		--file=filename (equals)
@@ -192,7 +194,7 @@ func (a app) parseOneLong(arg string, args []string) ([]string, error) {
 	return args, nil
 }
 
-func (a app) findShortOption(name string) (opt *Option, isNegated bool, exists bool) {
+func (a App) findShortOption(name string) (opt *Option, isNegated bool, exists bool) {
 
 	for _, opt := range a.options {
 		if slices.Contains(opt.sNames, name) {
@@ -222,7 +224,7 @@ func (a app) findShortOption(name string) (opt *Option, isNegated bool, exists b
 	return nil, false, false
 }
 
-func (a app) parseOneShort(arg string, args []string) ([]string, error) {
+func (a App) parseOneShort(arg string, args []string) ([]string, error) {
 	/*
 		-a (flag)
 		-f filename (option)
@@ -269,7 +271,7 @@ func (a app) parseOneShort(arg string, args []string) ([]string, error) {
 	return args, nil
 }
 
-func (a app) parseOne(args []string) ([]string, error) {
+func (a App) parseOne(args []string) ([]string, error) {
 	if len(args) == 0 {
 		return nil, errors.New("no arguments")
 	}
@@ -302,7 +304,7 @@ func (a app) parseOne(args []string) ([]string, error) {
 	return args, nil
 }
 
-func (a app) parsePositional(args []string) ([]string, error) {
+func (a App) parsePositional(args []string) ([]string, error) {
 
 	for _, opt := range a.options {
 
@@ -328,11 +330,11 @@ func (a app) parsePositional(args []string) ([]string, error) {
 	return args, nil
 }
 
-func (a app) ParseStrict() error {
+func (a App) ParseStrict() error {
 	return a.ParseArgsStrict(os.Args[1:])
 }
 
-func (a app) ParseArgsStrict(args []string) error {
+func (a App) ParseArgsStrict(args []string) error {
 	rest, err := a.ParseArgs(args)
 	if err != nil {
 		return err
@@ -345,11 +347,11 @@ func (a app) ParseArgsStrict(args []string) error {
 	return nil
 }
 
-func (a app) Parse() ([]string, error) {
+func (a App) Parse() ([]string, error) {
 	return a.ParseArgs(os.Args[1:])
 }
 
-func (a app) ParseArgs(args []string) ([]string, error) {
+func (a App) ParseArgs(args []string) ([]string, error) {
 	var err error
 
 	for len(args) > 0 {
@@ -367,10 +369,6 @@ func (a app) ParseArgs(args []string) ([]string, error) {
 		return nil, err
 	}
 
-	if err := a.assignDefaults(); err != nil {
-		return nil, err
-	}
-
 	if err := a.validateOptions(); err != nil {
 		return nil, err
 	}
@@ -378,38 +376,21 @@ func (a app) ParseArgs(args []string) ([]string, error) {
 	return args, nil
 }
 
-func (a app) assignDefaults() error {
+func (a App) validateOptions() error {
 	for _, opt := range a.options {
-		if !opt.exists && opt.defaultString != "" {
-			if opt.isFlag {
-				if err := setFlag(opt.value, opt.defaultString, false); err != nil {
-					return err
-				}
-			} else {
-				if err := setOption(opt.value, opt.defaultString, false); err != nil {
-					return err
-				}
-			}
-		}
-	}
-	return nil
-}
-
-func (a app) validateOptions() error {
-	for _, opt := range a.options {
-		if opt.isRequired && !opt.exists {
+		if opt.isRequired && !opt.Exists() {
 			return fmt.Errorf("%s is required\n%s", opt.canonicalName(), ErrorSuffix)
 		}
 
-		if opt.exists {
+		if opt.Exists() {
 			for _, need := range opt.needs {
-				if !need.exists {
+				if !need.Exists() {
 					return fmt.Errorf("%s requires %s\n%s", opt.canonicalName(), need.canonicalName(), ErrorSuffix)
 				}
 			}
 
 			for _, exclude := range opt.excludes {
-				if exclude.exists {
+				if exclude.Exists() {
 					return fmt.Errorf("%s excludes %s\n%s", opt.canonicalName(), exclude.canonicalName(), ErrorSuffix)
 				}
 			}
