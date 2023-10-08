@@ -351,3 +351,59 @@ func TestExcludes(t *testing.T) {
 	err := app.ParseArgsStrict(args)
 	assert.NoError(t, err)
 }
+
+func TestIgnoreCaseLong(t *testing.T) {
+	t.Parallel()
+	app := cligo.NewApp()
+
+	var option1 string
+
+	app.AddOption("-a,--alpha", &option1, "Option1", cligo.IgnoreCase())
+
+	args := []string{"--AlPhA=hello"}
+	err := app.ParseArgsStrict(args)
+	assert.NoError(t, err)
+}
+
+func TestIgnoreCaseShort(t *testing.T) {
+	t.Parallel()
+	app := cligo.NewApp()
+
+	var option1 string
+
+	app.AddOption("-a,--alpha", &option1, "Option1", cligo.IgnoreCase())
+
+	args := []string{"-A=hello"}
+	err := app.ParseArgsStrict(args)
+	assert.NoError(t, err)
+}
+
+func TestNegatedLong(t *testing.T) {
+	t.Parallel()
+	app := cligo.NewApp()
+
+	option1 := 50
+
+	app.AddFlag("-a,--alpha,!--no-alpha", &option1, "Option1", cligo.IgnoreCase())
+
+	args := []string{"--no-alpha"}
+	err := app.ParseArgsStrict(args)
+	if assert.NoError(t, err) {
+		assert.Equal(t, option1, 0)
+	}
+}
+
+func TestNegatedShort(t *testing.T) {
+	t.Parallel()
+	app := cligo.NewApp()
+
+	option1 := 50
+
+	app.AddFlag("-a,--alpha,!--no-alpha,!-n", &option1, "Option1", cligo.IgnoreCase())
+
+	args := []string{"-n"}
+	err := app.ParseArgsStrict(args)
+	if assert.NoError(t, err) {
+		assert.Equal(t, option1, 0)
+	}
+}

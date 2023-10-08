@@ -1,8 +1,10 @@
 package cligo
 
 import (
+	"fmt"
 	"reflect"
 	"strconv"
+	"strings"
 )
 
 type Signed interface {
@@ -14,18 +16,25 @@ type Unsigned interface {
 }
 
 type Option struct {
-	positionalName   string
-	longNames        []string
-	shortNames       []string
-	help             string
+
+	// A positional name
+	pName string
+
+	// A list of the long names without the leading dashes
+	lNames []string
+
+	// A list of the short names  without the leading dashes
+	sNames []string
+
 	value            any
-	defaultValue     string
+	description      string
+	defaultString    string
+	group            string
 	exists           bool
 	isFlag           bool
 	isPositionalOnly bool
 	isRequired       bool
 	ignoreCase       bool
-	group            string
 	trigger          Trigger
 	needs            []*Option
 	excludes         []*Option
@@ -80,7 +89,7 @@ func SetDefault(value string) Modifier {
 		if err := opt.setValue(value); err != nil {
 			panic("failed to set default")
 		}
-		opt.defaultValue = value
+		opt.defaultString = value
 	}
 }
 
@@ -96,21 +105,25 @@ func IsNil(i any) bool {
 	return false
 }
 
-func (opt Option) Exists() any {
+func (opt Option) Exists() bool {
 	return opt.exists
+}
+
+func (opt Option) IsPositional() bool {
+	return opt.pName != ""
 }
 
 func (opt Option) canonicalName() string {
 
-	if len(opt.longNames) != 0 {
-		return opt.longNames[0]
+	if len(opt.lNames) != 0 {
+		return opt.lNames[0]
 	}
 
-	if len(opt.shortNames) != 0 {
-		return opt.shortNames[0]
+	if len(opt.sNames) != 0 {
+		return opt.sNames[0]
 	}
 
-	return opt.positionalName
+	return opt.pName
 }
 
 func (opt *Option) setValue(value string) error {
@@ -298,4 +311,41 @@ func (opt *Option) zeroFlag() error {
 		opt.trigger(opt)
 	}
 	return nil
+}
+
+func (opt *Option) format() string {
+	nameList := make([]string, 0, len(opt.sNames)+len(opt.lNames))
+	for _, str := range opt.sNames {
+		nameList = append(nameList, "-"+str)
+	}
+
+	for _, str := range opt.lNames {
+		nameList = append(nameList, "--"+str)
+	}
+
+	names := strings.Join(nameList, ",")
+	names = names + valueTypeString(opt)
+
+	if opt.defaultString != "" {
+		names = names + fmt.Sprintf(" [%s]", opt.defaultString)
+	}
+
+	if opt.isRequired {
+		names = names + " REQUIRED"
+	}
+	return fmt.Sprintf("  %-30s %s", names, opt.description)
+}
+
+func (opt *Option) formatPositional() string {
+	name := opt.pName
+	name = name + valueTypeString(opt)
+
+	if opt.defaultString != "" {
+		name = name + fmt.Sprintf(" [%s]", opt.defaultString)
+	}
+
+	if opt.isRequired {
+		name = name + " REQUIRED"
+	}
+	return fmt.Sprintf("  %-30s %s", name, opt.description)
 }

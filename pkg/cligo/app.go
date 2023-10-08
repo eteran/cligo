@@ -6,33 +6,19 @@ import (
 	"os"
 	"reflect"
 	"strings"
+
+	"golang.org/x/exp/slices"
 )
 
 type app struct {
-	allOptions           []*Option
-	lOptions             map[string]*Option
-	sOptions             map[string]*Option
-	lLowerOptions        map[string]*Option
-	sLowerOptions        map[string]*Option
-	lNegatedOptions      map[string]*Option
-	sNegatedOptions      map[string]*Option
-	lNegatedLowerOptions map[string]*Option
-	sNegatedLowerOptions map[string]*Option
-	pOptions             []*Option
-	groups               map[string][]*Option
+	options    []*Option
+	negOptions []*Option
+	groups     map[string][]*Option
 }
 
 func NewApp() app {
 	return app{
-		lOptions:             make(map[string]*Option),
-		sOptions:             make(map[string]*Option),
-		lLowerOptions:        make(map[string]*Option),
-		sLowerOptions:        make(map[string]*Option),
-		lNegatedOptions:      make(map[string]*Option),
-		sNegatedOptions:      make(map[string]*Option),
-		lNegatedLowerOptions: make(map[string]*Option),
-		sNegatedLowerOptions: make(map[string]*Option),
-		groups:               make(map[string][]*Option),
+		groups: make(map[string][]*Option),
 	}
 }
 
@@ -47,28 +33,34 @@ func valueTypeString(opt *Option) string {
 	}
 }
 
+func filterFunc[T any](slice []T, f func(T) bool) []T {
+	result := make([]T, 0, len(slice))
+	for _, value := range slice {
+		if f(value) {
+			result = append(result, value)
+		}
+	}
+
+	return result
+}
+
 func (a app) Usage() {
 	fmt.Printf("Usage: %s [OPTIONS]", os.Args[0])
-	for _, opt := range a.pOptions {
-		fmt.Printf(" %s", opt.positionalName)
+
+	positionals := filterFunc(a.options, func(opt *Option) bool {
+		return opt.IsPositional()
+	})
+
+	for _, opt := range positionals {
+		fmt.Printf(" %s", opt.pName)
 	}
 
 	fmt.Println("")
-	if len(a.pOptions) != 0 {
+	if len(positionals) != 0 {
 		fmt.Println("")
 		fmt.Println("Positionals:")
-		for _, opt := range a.pOptions {
-			name := opt.positionalName
-			name = name + valueTypeString(opt)
-
-			if opt.defaultValue != "" {
-				name = name + fmt.Sprintf(" [%s]", opt.defaultValue)
-			}
-
-			if opt.isRequired {
-				name = name + " REQUIRED"
-			}
-			fmt.Printf("  %-30s %s\n", name, opt.help)
+		for _, opt := range positionals {
+			fmt.Println(opt.formatPositional())
 		}
 	}
 
@@ -77,17 +69,7 @@ func (a app) Usage() {
 		fmt.Printf("%s:\n", groupName)
 		for _, opt := range group {
 			if !opt.isPositionalOnly {
-				names := strings.Join(append(opt.shortNames, opt.longNames...), ",")
-				names = names + valueTypeString(opt)
-
-				if opt.defaultValue != "" {
-					names = names + fmt.Sprintf(" [%s]", opt.defaultValue)
-				}
-
-				if opt.isRequired {
-					names = names + " REQUIRED"
-				}
-				fmt.Printf("  %-30s %s\n", names, opt.help)
+				fmt.Println(opt.format())
 			}
 		}
 
@@ -99,67 +81,24 @@ func (a app) Usage() {
 	os.Exit(0)
 }
 
-func (a *app) addLongOption(name string, opt *Option, isNegated bool) error {
+func (a *app) addLongOption(name string, opt *Option, isNegated bool) {
 
-	opt.longNames = append(opt.longNames, "--"+name)
+	opt.lNames = append(opt.lNames, name)
 	opt.isPositionalOnly = false
-	lName := strings.ToLower(name)
 
 	if isNegated {
-		if _, exists := a.lNegatedOptions[name]; exists {
-			return ErrDuplicateOption
-		}
-		a.lNegatedOptions[name] = opt
-
-		if _, exists := a.lNegatedLowerOptions[lName]; exists {
-			return ErrDuplicateOption
-		}
-		a.lNegatedLowerOptions[lName] = opt
-
-	} else {
-		if _, exists := a.lOptions[name]; exists {
-			return ErrDuplicateOption
-		}
-		a.lOptions[name] = opt
-
-		if _, exists := a.lLowerOptions[lName]; exists {
-			return ErrDuplicateOption
-		}
-		a.lLowerOptions[lName] = opt
-
+		a.negOptions = append(a.negOptions, opt)
 	}
-	return nil
 }
 
-func (a *app) addShortOption(name string, opt *Option, isNegated bool) error {
+func (a *app) addShortOption(name string, opt *Option, isNegated bool) {
 
-	opt.shortNames = append(opt.shortNames, "-"+name)
+	opt.sNames = append(opt.sNames, name)
 	opt.isPositionalOnly = false
-	lName := strings.ToLower(name)
 
 	if isNegated {
-		if _, exists := a.sNegatedOptions[name]; exists {
-			return ErrDuplicateOption
-		}
-		a.sNegatedOptions[name] = opt
-
-		if _, exists := a.sNegatedLowerOptions[lName]; exists {
-			return ErrDuplicateOption
-		}
-		a.sNegatedLowerOptions[lName] = opt
-	} else {
-
-		if _, exists := a.sOptions[name]; exists {
-			return ErrDuplicateOption
-		}
-		a.sOptions[name] = opt
-
-		if _, exists := a.sLowerOptions[lName]; exists {
-			return ErrDuplicateOption
-		}
-		a.sLowerOptions[lName] = opt
+		a.negOptions = append(a.negOptions, opt)
 	}
-	return nil
 }
 
 func (a *app) AddOption(name string, value any, help string, modifiers ...Modifier) *Option {
@@ -172,7 +111,7 @@ func (a *app) AddOption(name string, value any, help string, modifiers ...Modifi
 	}
 
 	opt := &Option{
-		help:             help,
+		description:      help,
 		value:            value,
 		isFlag:           false,
 		isPositionalOnly: true,
@@ -191,27 +130,27 @@ func (a *app) AddOption(name string, value any, help string, modifiers ...Modifi
 			panic("argument has empty name, do you have a trailing comma?")
 		}
 
+		isNegated := strings.HasPrefix(optionName, "!")
+		if isNegated {
+			panic("only flags can be negated")
+		}
+
 		isLong := strings.HasPrefix(optionName, "--")
 		isShort := !isLong && strings.HasPrefix(optionName, "-")
 		isPositional := !isLong && !isShort
 
 		if isLong {
 			lName := optionName[2:]
-			if err := a.addLongOption(lName, opt, false); err != nil {
-				panic(err)
-			}
+			a.addLongOption(lName, opt, false)
 		} else if isShort {
 			sName := optionName[1:]
-			if err := a.addShortOption(sName, opt, false); err != nil {
-				panic(err)
-			}
+			a.addShortOption(sName, opt, false)
 		} else if isPositional {
-			opt.positionalName = optionName
-			a.pOptions = append(a.pOptions, opt)
+			opt.pName = optionName
 		}
 	}
 
-	a.allOptions = append(a.allOptions, opt)
+	a.options = append(a.options, opt)
 	a.groups[opt.group] = append(a.groups[opt.group], opt)
 	return opt
 }
@@ -241,10 +180,10 @@ func (a *app) AddFlag(name string, value any, help string, modifiers ...Modifier
 	ensureIntegralPointer(value)
 
 	opt := &Option{
-		help:   help,
-		value:  value,
-		isFlag: true,
-		group:  "Options",
+		description: help,
+		value:       value,
+		isFlag:      true,
+		group:       "Options",
 	}
 
 	for _, mod := range modifiers {
@@ -270,40 +209,52 @@ func (a *app) AddFlag(name string, value any, help string, modifiers ...Modifier
 
 		if isLong {
 			lName := flagName[2:]
-			if err := a.addLongOption(lName, opt, isNegated); err != nil {
-				panic(err)
-			}
+			a.addLongOption(lName, opt, isNegated)
 		} else if isShort {
 			sName := flagName[1:]
-			if err := a.addShortOption(sName, opt, isNegated); err != nil {
-				panic(err)
-			}
+			a.addShortOption(sName, opt, isNegated)
 		} else if isPositional {
 			panic("positional arguments must not be flags")
 		}
 	}
 
-	a.allOptions = append(a.allOptions, opt)
+	a.options = append(a.options, opt)
 	a.groups[opt.group] = append(a.groups[opt.group], opt)
 	return opt
 }
 
 func (a app) findLongOption(name string) (opt *Option, isNegated bool, exists bool) {
-	if opt, exists := a.lOptions[name]; exists {
-		return opt, false, true
+
+	// search negated first because the name will be found
+	// in the normal list too
+	for _, opt := range a.negOptions {
+		if slices.Contains(opt.lNames, name) {
+			return opt, true, true
+		}
+
+		if opt.ignoreCase {
+			lName := strings.ToLower(name)
+			if slices.ContainsFunc(opt.lNames, func(str string) bool {
+				return lName == strings.ToLower(str)
+			}) {
+				return opt, true, true
+			}
+		}
 	}
 
-	if opt, exists := a.lNegatedOptions[name]; exists {
-		return opt, true, true
-	}
+	for _, opt := range a.options {
+		if slices.Contains(opt.lNames, name) {
+			return opt, false, true
+		}
 
-	lName := strings.ToLower(name)
-	if opt, exists := a.lLowerOptions[lName]; exists && opt.ignoreCase {
-		return opt, false, true
-	}
-
-	if opt, exists := a.lNegatedLowerOptions[lName]; exists && opt.ignoreCase {
-		return opt, true, true
+		if opt.ignoreCase {
+			lName := strings.ToLower(name)
+			if slices.ContainsFunc(opt.lNames, func(str string) bool {
+				return lName == strings.ToLower(str)
+			}) {
+				return opt, false, true
+			}
+		}
 	}
 
 	return nil, false, false
@@ -320,9 +271,9 @@ func (a app) parseOneLong(arg string, args []string) ([]string, error) {
 	param := ""
 
 	if strings.Contains(name, "=") {
-		x := strings.SplitN(name, "=", 2)
-		name = x[0]
-		param = x[1]
+		parts := strings.SplitN(name, "=", 2)
+		name = parts[0]
+		param = parts[1]
 	}
 
 	opt, isNegated, exists := a.findLongOption(name)
@@ -360,21 +311,37 @@ func (a app) parseOneLong(arg string, args []string) ([]string, error) {
 }
 
 func (a app) findShortOption(name string) (opt *Option, isNegated bool, exists bool) {
-	if opt, exists := a.sOptions[name]; exists {
-		return opt, false, true
+
+	// search negated first because the name will be found
+	// in the normal list too
+	for _, opt := range a.negOptions {
+		if slices.Contains(opt.sNames, name) {
+			return opt, true, true
+		}
+
+		if opt.ignoreCase {
+			lName := strings.ToLower(name)
+			if slices.ContainsFunc(opt.sNames, func(str string) bool {
+				return lName == strings.ToLower(str)
+			}) {
+				return opt, true, true
+			}
+		}
 	}
 
-	if opt, exists := a.sNegatedOptions[name]; exists {
-		return opt, true, true
-	}
+	for _, opt := range a.options {
+		if slices.Contains(opt.sNames, name) {
+			return opt, false, true
+		}
 
-	lName := strings.ToLower(name)
-	if opt, exists := a.sLowerOptions[lName]; exists && opt.ignoreCase {
-		return opt, false, true
-	}
-
-	if opt, exists := a.sNegatedLowerOptions[lName]; exists && opt.ignoreCase {
-		return opt, true, true
+		if opt.ignoreCase {
+			lName := strings.ToLower(name)
+			if slices.ContainsFunc(opt.sNames, func(str string) bool {
+				return lName == strings.ToLower(str)
+			}) {
+				return opt, false, true
+			}
+		}
 	}
 
 	return nil, false, false
@@ -462,9 +429,13 @@ func (a app) parseOne(args []string) ([]string, error) {
 
 func (a app) parsePositional(args []string) ([]string, error) {
 
-	for _, opt := range a.pOptions {
+	for _, opt := range a.options {
 
-		if opt.exists {
+		if !opt.IsPositional() {
+			continue
+		}
+
+		if opt.Exists() {
 			continue
 		}
 
@@ -520,23 +491,31 @@ func (a app) ParseArgs(args []string) ([]string, error) {
 		return nil, err
 	}
 
-	for _, opt := range a.allOptions {
+	if err := a.validateOptions(); err != nil {
+		return nil, err
+	}
+
+	return args, nil
+}
+
+func (a app) validateOptions() error {
+	for _, opt := range a.options {
 		if opt.isRequired && !opt.exists {
-			return nil, fmt.Errorf("%s is required\n%s", opt.canonicalName(), ErrorSuffix)
+			return fmt.Errorf("%s is required\n%s", opt.canonicalName(), ErrorSuffix)
 		}
 
 		for _, need := range opt.needs {
 			if !need.exists {
-				return nil, fmt.Errorf("%s requires %s\n%s", opt.canonicalName(), need.canonicalName(), ErrorSuffix)
+				return fmt.Errorf("%s requires %s\n%s", opt.canonicalName(), need.canonicalName(), ErrorSuffix)
 			}
 		}
 
 		for _, exclude := range opt.excludes {
 			if exclude.exists {
-				return nil, fmt.Errorf("%s excludes %s\n%s", opt.canonicalName(), exclude.canonicalName(), ErrorSuffix)
+				return fmt.Errorf("%s excludes %s\n%s", opt.canonicalName(), exclude.canonicalName(), ErrorSuffix)
 			}
 		}
 	}
 
-	return args, nil
+	return nil
 }
