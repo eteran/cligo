@@ -92,7 +92,7 @@ func setOption(ptr any, v string, isNegated bool) error {
 func (a *App) AddOption(name string, ptr any, help string, modifiers ...Modifier) *Option {
 
 	opt := NewOption(name, ptr, help, modifiers...)
-	opt.app = a
+	opt.owner = a
 	a.options = append(a.options, opt)
 	a.groups[opt.group] = append(a.groups[opt.group], opt)
 	return opt
@@ -116,7 +116,7 @@ func setFlag(ptr any, v string, isNegated bool) error {
 func (a *App) AddFlag(name string, ptr any, help string, modifiers ...Modifier) *Option {
 
 	opt := NewFlag(name, ptr, help, modifiers...)
-	opt.app = a
+	opt.owner = a
 	a.options = append(a.options, opt)
 	a.groups[opt.group] = append(a.groups[opt.group], opt)
 	return opt

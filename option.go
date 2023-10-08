@@ -32,7 +32,7 @@ type Option struct {
 	// A list of the negated short names without the leading dashes
 	sNamesNeg []string
 
-	app           *App
+	owner         *App
 	count         int
 	ptr           any
 	description   string
