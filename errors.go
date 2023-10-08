@@ -12,6 +12,6 @@ var (
 	ErrMissingParameter = errors.New("missing parameter")
 	ErrUnsupportedType  = errors.New("unsupported bound variable type")
 	ErrEndOfArguments   = errors.New("end of arguments")
-	ErrNoArguments      = errors.New("no arguments")
 	ErrDuplicateOption  = errors.New("duplicate option")
+	ErrHelpRequested    = errors.New("help requested")
 )

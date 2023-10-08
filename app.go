@@ -76,8 +76,6 @@ func (a App) Usage() {
 			}
 		}
 	}
-
-	os.Exit(0)
 }
 
 func setOption(ptr any, v string, isNegated bool) error {
@@ -272,16 +270,13 @@ func (a App) parseOneShort(arg string, args []string) ([]string, error) {
 }
 
 func (a App) parseOne(args []string) ([]string, error) {
-	if len(args) == 0 {
-		return nil, ErrNoArguments
-	}
-
 	arg := args[0]
 
 	var err error
 	switch {
 	case arg == "-h" || arg == "--help":
 		a.Usage()
+		return args, ErrHelpRequested
 	case arg == "--":
 		args = args[1:]
 		return args, ErrEndOfArguments

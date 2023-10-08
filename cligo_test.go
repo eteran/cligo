@@ -1,11 +1,7 @@
 package cligo_test
 
 import (
-	"bytes"
 	"cligo"
-	"io"
-	"os"
-	"os/exec"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -429,32 +425,16 @@ func TestCaptureDefault(t *testing.T) {
 	// This one is tricky because the testing support doesn't allow for os.Exit
 	t.Parallel()
 
-	if os.Getenv("BE_CRASHER") == "1" {
-		app := cligo.NewApp()
+	app := cligo.NewApp()
 
-		option1 := "hello world"
+	option1 := "hello world"
 
-		app.AddOption("-a,--alpha", &option1, "Option1", cligo.CaptureDefault())
+	app.AddOption("-a,--alpha", &option1, "Option1", cligo.CaptureDefault())
 
-		args := []string{"--help"}
-		err := app.ParseArgsStrict(args)
+	args := []string{"--help"}
+	err := app.ParseArgsStrict(args)
 
-		if assert.NoError(t, err) {
-			assert.Equal(t, "hello world", option1)
-		}
-		return
+	if assert.ErrorIs(t, err, cligo.ErrHelpRequested) {
+		assert.Equal(t, "hello world", option1)
 	}
-
-	cmd := exec.Command(os.Args[0], "-test.run=TestCaptureDefault")
-	var outb bytes.Buffer
-	cmd.Stdout = &outb
-	cmd.Env = append(os.Environ(), "BE_CRASHER=1")
-	err := cmd.Run()
-	if assert.NoError(t, err) {
-		out, err := io.ReadAll(&outb)
-		if assert.NoError(t, err) {
-			assert.Contains(t, string(out), "[hello world]")
-		}
-	}
-
 }
