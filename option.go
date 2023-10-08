@@ -376,7 +376,7 @@ func NewOption(name string, ptr any, help string, modifiers ...Modifier) *Option
 		value:       ptr,
 		setter: func(opt *Option, v string, isNegated bool) error {
 
-			if err := setOption(ptr, v, isNegated); err != nil {
+			if err := setOption(opt.value, v, isNegated); err != nil {
 				return err
 			}
 
@@ -442,7 +442,7 @@ func NewFlag(name string, ptr any, help string, modifiers ...Modifier) *Option {
 		group:       "Options",
 		setter: func(opt *Option, v string, isNegated bool) error {
 
-			if err := setFlag(ptr, v, isNegated); err != nil {
+			if err := setFlag(opt.value, v, isNegated); err != nil {
 				return err
 			}
 
