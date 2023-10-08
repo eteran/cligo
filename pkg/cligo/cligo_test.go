@@ -154,6 +154,25 @@ func TestFlagOptionCombined(t *testing.T) {
 	}
 }
 
+func TestFlagOptionCombinedError(t *testing.T) {
+	t.Parallel()
+	app := cligo.NewApp()
+
+	var v1 bool
+	var v2 bool
+	var v3 bool
+	var filename string
+	app.AddFlag("-a,--alpha", &v1, "v1")
+	app.AddFlag("-b,--beta", &v2, "v2")
+	app.AddFlag("-g,--gamma", &v3, "v3")
+	app.AddOption("-f,--file", &filename, "filename")
+
+	args := []string{"-agf"}
+	err := app.ParseArgsStrict(args)
+	assert.Error(t, err)
+
+}
+
 // -ffilename (no space required)
 func TestOptionShortStringNoSpace(t *testing.T) {
 	t.Parallel()
@@ -184,6 +203,18 @@ func TestOptionShortStringSpace(t *testing.T) {
 	}
 }
 
+func TestOptionShortStringSpaceError(t *testing.T) {
+	t.Parallel()
+	app := cligo.NewApp()
+
+	var filename string
+	app.AddOption("-f,--file", &filename, "filename")
+
+	args := []string{"-f"}
+	err := app.ParseArgsStrict(args)
+	assert.Error(t, err)
+}
+
 // --file filename (space)
 func TestOptionLongStringSpace(t *testing.T) {
 	t.Parallel()
@@ -197,6 +228,18 @@ func TestOptionLongStringSpace(t *testing.T) {
 	if assert.NoError(t, err) {
 		assert.Equal(t, filename, "test.txt")
 	}
+}
+
+func TestOptionLongStringSpaceError(t *testing.T) {
+	t.Parallel()
+	app := cligo.NewApp()
+
+	var filename string
+	app.AddOption("-f,--file", &filename, "filename")
+
+	args := []string{"--file"}
+	err := app.ParseArgsStrict(args)
+	assert.Error(t, err)
 }
 
 // --file=filename (equals)
