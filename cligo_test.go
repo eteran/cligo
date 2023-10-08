@@ -438,3 +438,35 @@ func TestCaptureDefault(t *testing.T) {
 		assert.Equal(t, "hello world", option1)
 	}
 }
+
+func TestRangeValidatorError(t *testing.T) {
+	// This one is tricky because the testing support doesn't allow for os.Exit
+	t.Parallel()
+
+	app := cligo.NewApp()
+
+	option1 := 0
+
+	app.AddOption("-a,--alpha", &option1, "Option1", cligo.AddValidator(cligo.Range(100, 200)))
+
+	args := []string{"--alpha=10"}
+	err := app.ParseArgsStrict(args)
+	assert.Error(t, err)
+}
+
+func TestRangeValidator(t *testing.T) {
+	// This one is tricky because the testing support doesn't allow for os.Exit
+	t.Parallel()
+
+	app := cligo.NewApp()
+
+	option1 := 0
+
+	app.AddOption("-a,--alpha", &option1, "Option1", cligo.AddValidator(cligo.Range(100, 200)))
+
+	args := []string{"--alpha=100"}
+	err := app.ParseArgsStrict(args)
+	if assert.NoError(t, err) {
+		assert.Equal(t, 100, option1)
+	}
+}

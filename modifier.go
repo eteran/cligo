@@ -50,3 +50,9 @@ func CaptureDefault() Modifier {
 		opt.defaultString = getValue(opt.ptr)
 	}
 }
+
+func AddValidator(v Validator) Modifier {
+	return func(opt *Option) {
+		opt.validators = append(opt.validators, v)
+	}
+}
