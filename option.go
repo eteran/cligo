@@ -343,7 +343,8 @@ func (opt *Option) formatPositional() string {
 
 func NewOption(name string, ptr any, help string, modifiers ...Modifier) *Option {
 	if ptr != nil {
-		if reflect.TypeOf(ptr).Kind() != reflect.Ptr {
+		rv := reflect.ValueOf(ptr)
+		if rv.Kind() != reflect.Ptr {
 			panic("bound variables must be pointers")
 		}
 	}
@@ -491,12 +492,12 @@ func NewFlag(name string, ptr any, help string, modifiers ...Modifier) *Option {
 
 func ensureIntegralPointer(ptr any) {
 	if ptr != nil {
-		ty := reflect.TypeOf(ptr)
-		if ty.Kind() != reflect.Ptr {
+		rv := reflect.ValueOf(ptr)
+		if rv.Kind() != reflect.Ptr {
 			panic("bound variables must be pointers")
 		}
 
-		switch ty.Elem().Kind() {
+		switch rv.Elem().Kind() {
 		case reflect.Bool,
 			reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
 			reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
