@@ -1,9 +1,9 @@
 package cligo_test
 
 import (
-	"cligo"
 	"testing"
 
+	"github.com/eteran/cligo"
 	"github.com/stretchr/testify/require"
 )
 

@@ -1,4 +1,4 @@
-module cligo
+module github.com/eteran/cligo
 
 go 1.23.0
 
