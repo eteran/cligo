@@ -357,8 +357,8 @@ func NewOption(name string, ptr any, help string, modifiers ...Modifier) *Option
 		setter: func(opt *Option, v string, isNegated bool) error {
 
 			for _, validator := range opt.validators {
-				if errString := validator(v); errString != "" {
-					return fmt.Errorf("%s", errString)
+				if err := validator(v); err != nil {
+					return err
 				}
 			}
 
@@ -429,8 +429,8 @@ func NewFlag(name string, ptr any, help string, modifiers ...Modifier) *Option {
 		setter: func(opt *Option, v string, isNegated bool) error {
 
 			for _, validator := range opt.validators {
-				if errString := validator(v); errString != "" {
-					return fmt.Errorf("%s", errString)
+				if err := validator(v); err != nil {
+					return err
 				}
 			}
 

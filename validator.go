@@ -7,48 +7,48 @@ import (
 	"strconv"
 )
 
-type Validator func(str string) string
+type Validator func(str string) error
 
-// Check for existing file (returns error message if check fails)
-func ExistingFile(path string) Validator {
-	return func(str string) string {
+// Check for existing file
+func ExistingFile() Validator {
+	return func(path string) error {
 		if _, err := os.Stat(path); errors.Is(err, os.ErrNotExist) {
-			return err.Error()
+			return err
 		}
 
-		return ""
+		return nil
 	}
 }
 
-// Check for an existing directory (returns error message if check fails)
-func ExistingDirectory(path string) Validator {
-	return func(str string) string {
+// Check for an existing directory
+func ExistingDirectory() Validator {
+	return func(path string) error {
 		st, err := os.Stat(path)
 		if errors.Is(err, os.ErrNotExist) {
-			return err.Error()
+			return err
 		}
 
 		if !st.IsDir() {
-			return fmt.Sprintf("%s is not a directory", path)
+			return fmt.Errorf("%s is not a directory", path)
 		}
 
-		return ""
+		return nil
 	}
 }
 
 // Produce a range (factory). Min and max are inclusive.
 func Range(min, max int64) Validator {
-	return func(str string) string {
+	return func(str string) error {
 		i, err := strconv.ParseInt(str, 10, 64)
 		if err != nil {
-			return err.Error()
+			return err
 		}
 
 		if i < min || i > max {
-			return fmt.Sprintf("%s is not in the range of [%d-%d]", str, min, max)
+			return fmt.Errorf("%s is not in the range of [%d-%d]", str, min, max)
 		}
 
-		return ""
+		return nil
 	}
 }
 
