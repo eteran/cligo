@@ -1,10 +1,12 @@
 module cligo
 
-go 1.19
+go 1.23.0
+
+toolchain go1.23.1
 
 require (
-	github.com/stretchr/testify v1.8.4
-	golang.org/x/exp v0.0.0-20231006140011-7918f672742d
+	github.com/stretchr/testify v1.10.0
+	golang.org/x/exp v0.0.0-20250215185904-eff6e970281f
 )
 
 require (

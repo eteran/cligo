@@ -4,7 +4,7 @@ import (
 	"cligo"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // -a (flag)
@@ -17,9 +17,9 @@ func TestFlagShort(t *testing.T) {
 
 	args := []string{"-v"}
 	err := app.ParseArgsStrict(args)
-	if assert.NoError(t, err) {
-		assert.Equal(t, true, verbose)
-	}
+	require.NoError(t, err)
+	require.Equal(t, true, verbose)
+
 }
 
 // --long (long flag)
@@ -32,9 +32,9 @@ func TestFlagLong(t *testing.T) {
 
 	args := []string{"--verbose"}
 	err := app.ParseArgsStrict(args)
-	if assert.NoError(t, err) {
-		assert.Equal(t, true, verbose)
-	}
+	require.NoError(t, err)
+	require.Equal(t, true, verbose)
+
 }
 
 // --long_flag=true (long flag with equals to override default value)
@@ -47,9 +47,9 @@ func TestFlagLongEqual(t *testing.T) {
 
 	args := []string{"--verbose=true"}
 	err := app.ParseArgsStrict(args)
-	if assert.NoError(t, err) {
-		assert.Equal(t, true, verbose)
-	}
+	require.NoError(t, err)
+	require.Equal(t, true, verbose)
+
 }
 
 // --long_flag=true (long flag with equals to override default value)
@@ -62,9 +62,9 @@ func TestFlagLongEqualInteger(t *testing.T) {
 
 	args := []string{"--count=9000"}
 	err := app.ParseArgsStrict(args)
-	if assert.NoError(t, err) {
-		assert.Equal(t, 9000, count)
-	}
+	require.NoError(t, err)
+	require.Equal(t, 9000, count)
+
 }
 
 func TestFlagShortRepeated(t *testing.T) {
@@ -75,9 +75,9 @@ func TestFlagShortRepeated(t *testing.T) {
 
 	args := []string{"-vvvv"}
 	err := app.ParseArgsStrict(args)
-	if assert.NoError(t, err) {
-		assert.Equal(t, 4, opt.Count())
-	}
+	require.NoError(t, err)
+	require.Equal(t, 4, opt.Count())
+
 }
 
 func TestFlagLongRepeated(t *testing.T) {
@@ -88,9 +88,9 @@ func TestFlagLongRepeated(t *testing.T) {
 
 	args := []string{"--verbose", "--verbose", "--verbose"}
 	err := app.ParseArgsStrict(args)
-	if assert.NoError(t, err) {
-		assert.Equal(t, 3, opt.Count())
-	}
+	require.NoError(t, err)
+	require.Equal(t, 3, opt.Count())
+
 }
 
 func TestFlagsRepeatedMixed(t *testing.T) {
@@ -102,9 +102,9 @@ func TestFlagsRepeatedMixed(t *testing.T) {
 
 	args := []string{"--verbose", "-v", "--verbose", "-v", "--verbose=false"}
 	err := app.ParseArgsStrict(args)
-	if assert.NoError(t, err) {
-		assert.Equal(t, 5, opt.Count())
-	}
+	require.NoError(t, err)
+	require.Equal(t, 5, opt.Count())
+
 }
 
 // -abc (flags can be combined)
@@ -121,11 +121,11 @@ func TestFlagCombined(t *testing.T) {
 
 	args := []string{"-ag"}
 	err := app.ParseArgsStrict(args)
-	if assert.NoError(t, err) {
-		assert.Equal(t, true, v1)
-		assert.Equal(t, false, v2)
-		assert.Equal(t, true, v3)
-	}
+	require.NoError(t, err)
+	require.Equal(t, true, v1)
+	require.Equal(t, false, v2)
+	require.Equal(t, true, v3)
+
 }
 
 // -abcf filename (flags and option can be combined)
@@ -144,12 +144,12 @@ func TestFlagOptionCombined(t *testing.T) {
 
 	args := []string{"-agf", "document.txt"}
 	err := app.ParseArgsStrict(args)
-	if assert.NoError(t, err) {
-		assert.Equal(t, true, v1)
-		assert.Equal(t, false, v2)
-		assert.Equal(t, true, v3)
-		assert.Equal(t, "document.txt", filename)
-	}
+	require.NoError(t, err)
+	require.Equal(t, true, v1)
+	require.Equal(t, false, v2)
+	require.Equal(t, true, v3)
+	require.Equal(t, "document.txt", filename)
+
 }
 
 func TestFlagOptionCombinedError(t *testing.T) {
@@ -167,7 +167,7 @@ func TestFlagOptionCombinedError(t *testing.T) {
 
 	args := []string{"-agf"}
 	err := app.ParseArgsStrict(args)
-	assert.Error(t, err)
+	require.Error(t, err)
 
 }
 
@@ -181,9 +181,9 @@ func TestOptionShortStringNoSpace(t *testing.T) {
 
 	args := []string{"-ftest.txt"}
 	err := app.ParseArgsStrict(args)
-	if assert.NoError(t, err) {
-		assert.Equal(t, "test.txt", filename)
-	}
+	require.NoError(t, err)
+	require.Equal(t, "test.txt", filename)
+
 }
 
 // -f filename (option)
@@ -196,9 +196,9 @@ func TestOptionShortStringSpace(t *testing.T) {
 
 	args := []string{"-f", "test.txt"}
 	err := app.ParseArgsStrict(args)
-	if assert.NoError(t, err) {
-		assert.Equal(t, "test.txt", filename)
-	}
+	require.NoError(t, err)
+	require.Equal(t, "test.txt", filename)
+
 }
 
 func TestOptionShortStringSpaceError(t *testing.T) {
@@ -210,7 +210,7 @@ func TestOptionShortStringSpaceError(t *testing.T) {
 
 	args := []string{"-f"}
 	err := app.ParseArgsStrict(args)
-	assert.Error(t, err)
+	require.Error(t, err)
 }
 
 // --file filename (space)
@@ -223,9 +223,9 @@ func TestOptionLongStringSpace(t *testing.T) {
 
 	args := []string{"--file", "test.txt"}
 	err := app.ParseArgsStrict(args)
-	if assert.NoError(t, err) {
-		assert.Equal(t, "test.txt", filename)
-	}
+	require.NoError(t, err)
+	require.Equal(t, "test.txt", filename)
+
 }
 
 func TestOptionLongStringSpaceError(t *testing.T) {
@@ -237,7 +237,7 @@ func TestOptionLongStringSpaceError(t *testing.T) {
 
 	args := []string{"--file"}
 	err := app.ParseArgsStrict(args)
-	assert.Error(t, err)
+	require.Error(t, err)
 }
 
 // --file=filename (equals)
@@ -250,9 +250,9 @@ func TestOptionLongStringEqual(t *testing.T) {
 
 	args := []string{"--file=test.txt"}
 	err := app.ParseArgsStrict(args)
-	if assert.NoError(t, err) {
-		assert.Equal(t, "test.txt", filename)
-	}
+	require.NoError(t, err)
+	require.Equal(t, "test.txt", filename)
+
 }
 
 func TestOptionLongIntegerEqual(t *testing.T) {
@@ -264,9 +264,9 @@ func TestOptionLongIntegerEqual(t *testing.T) {
 
 	args := []string{"--value=42"}
 	err := app.ParseArgsStrict(args)
-	if assert.NoError(t, err) {
-		assert.Equal(t, 42, value)
-	}
+	require.NoError(t, err)
+	require.Equal(t, 42, value)
+
 }
 
 func TestOptionPositionalString(t *testing.T) {
@@ -280,10 +280,10 @@ func TestOptionPositionalString(t *testing.T) {
 
 	args := []string{"--value=42", "my_destination_file"}
 	err := app.ParseArgsStrict(args)
-	if assert.NoError(t, err) {
-		assert.Equal(t, 42, value)
-		assert.Equal(t, "my_destination_file", dest)
-	}
+	require.NoError(t, err)
+	require.Equal(t, 42, value)
+	require.Equal(t, "my_destination_file", dest)
+
 }
 
 func TestNeedsError(t *testing.T) {
@@ -299,7 +299,7 @@ func TestNeedsError(t *testing.T) {
 
 	args := []string{"--beta=42"}
 	err := app.ParseArgsStrict(args)
-	assert.Error(t, err)
+	require.Error(t, err)
 }
 
 func TestNeeds(t *testing.T) {
@@ -315,7 +315,7 @@ func TestNeeds(t *testing.T) {
 
 	args := []string{"--beta=world", "--alpha=hello"}
 	err := app.ParseArgsStrict(args)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestExcludesError(t *testing.T) {
@@ -330,7 +330,7 @@ func TestExcludesError(t *testing.T) {
 
 	args := []string{"--beta=world", "--alpha=hello"}
 	err := app.ParseArgsStrict(args)
-	assert.Error(t, err)
+	require.Error(t, err)
 }
 
 func TestExcludes(t *testing.T) {
@@ -345,7 +345,7 @@ func TestExcludes(t *testing.T) {
 
 	args := []string{"--alpha=hello"}
 	err := app.ParseArgsStrict(args)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestIgnoreCaseLong(t *testing.T) {
@@ -358,7 +358,7 @@ func TestIgnoreCaseLong(t *testing.T) {
 
 	args := []string{"--AlPhA=hello"}
 	err := app.ParseArgsStrict(args)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestIgnoreCaseShort(t *testing.T) {
@@ -371,7 +371,7 @@ func TestIgnoreCaseShort(t *testing.T) {
 
 	args := []string{"-A=hello"}
 	err := app.ParseArgsStrict(args)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestNegatedLong(t *testing.T) {
@@ -384,10 +384,10 @@ func TestNegatedLong(t *testing.T) {
 
 	args := []string{"--no-alpha"}
 	err := app.ParseArgsStrict(args)
-	if assert.NoError(t, err) {
-		assert.Equal(t, -1, option1)
-		assert.Equal(t, 1, opt.Count())
-	}
+	require.NoError(t, err)
+	require.Equal(t, -1, option1)
+	require.Equal(t, 1, opt.Count())
+
 }
 
 func TestNegatedShort(t *testing.T) {
@@ -400,10 +400,10 @@ func TestNegatedShort(t *testing.T) {
 
 	args := []string{"-n"}
 	err := app.ParseArgsStrict(args)
-	if assert.NoError(t, err) {
-		assert.Equal(t, -1, option1)
-		assert.Equal(t, 1, opt.Count())
-	}
+	require.NoError(t, err)
+	require.Equal(t, -1, option1)
+	require.Equal(t, 1, opt.Count())
+
 }
 
 func TestDefault(t *testing.T) {
@@ -416,13 +416,12 @@ func TestDefault(t *testing.T) {
 
 	args := []string{}
 	err := app.ParseArgsStrict(args)
-	if assert.NoError(t, err) {
-		assert.Equal(t, "hello world", option1)
-	}
+	require.NoError(t, err)
+	require.Equal(t, "hello world", option1)
+
 }
 
 func TestCaptureDefault(t *testing.T) {
-	// This one is tricky because the testing support doesn't allow for os.Exit
 	t.Parallel()
 
 	app := cligo.NewApp()
@@ -434,13 +433,12 @@ func TestCaptureDefault(t *testing.T) {
 	args := []string{"--help"}
 	err := app.ParseArgsStrict(args)
 
-	if assert.ErrorIs(t, err, cligo.ErrHelpRequested) {
-		assert.Equal(t, "hello world", option1)
-	}
+	require.ErrorIs(t, err, cligo.ErrHelpRequested)
+	require.Equal(t, "hello world", option1)
+
 }
 
 func TestRangeValidatorError(t *testing.T) {
-	// This one is tricky because the testing support doesn't allow for os.Exit
 	t.Parallel()
 
 	app := cligo.NewApp()
@@ -451,11 +449,10 @@ func TestRangeValidatorError(t *testing.T) {
 
 	args := []string{"--alpha=10"}
 	err := app.ParseArgsStrict(args)
-	assert.Error(t, err)
+	require.Error(t, err)
 }
 
 func TestRangeValidator(t *testing.T) {
-	// This one is tricky because the testing support doesn't allow for os.Exit
 	t.Parallel()
 
 	app := cligo.NewApp()
@@ -466,7 +463,7 @@ func TestRangeValidator(t *testing.T) {
 
 	args := []string{"--alpha=100"}
 	err := app.ParseArgsStrict(args)
-	if assert.NoError(t, err) {
-		assert.Equal(t, 100, option1)
-	}
+	require.NoError(t, err)
+	require.Equal(t, 100, option1)
+
 }
