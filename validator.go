@@ -9,8 +9,40 @@ import (
 
 type Validator func(str string) error
 
-// Check for existing file
+// ExistingFile checks if the string is a path to an existing file
 func ExistingFile() Validator {
+	return func(path string) error {
+		st, err := os.Stat(path)
+		if errors.Is(err, os.ErrNotExist) {
+			return err
+		}
+
+		if !st.Mode().IsRegular() {
+			return fmt.Errorf("%s is not a file", path)
+		}
+
+		return nil
+	}
+}
+
+// ExistingDirectory checks if the string is a path to an existing directory
+func ExistingDirectory() Validator {
+	return func(path string) error {
+		st, err := os.Stat(path)
+		if errors.Is(err, os.ErrNotExist) {
+			return err
+		}
+
+		if !st.Mode().IsDir() {
+			return fmt.Errorf("%s is not a directory", path)
+		}
+
+		return nil
+	}
+}
+
+// ExistingPath checks if the string is a path to an existing file or existing directory
+func ExistingPath() Validator {
 	return func(path string) error {
 		if _, err := os.Stat(path); errors.Is(err, os.ErrNotExist) {
 			return err
@@ -20,24 +52,20 @@ func ExistingFile() Validator {
 	}
 }
 
-// Check for an existing directory
-func ExistingDirectory() Validator {
+// NonexistentPath checks if the string is a path to an non-existing file or existing directory
+func NonexistentPath() Validator {
 	return func(path string) error {
-		st, err := os.Stat(path)
+		_, err := os.Stat(path)
 		if errors.Is(err, os.ErrNotExist) {
-			return err
+			return nil
 		}
 
-		if !st.IsDir() {
-			return fmt.Errorf("%s is not a directory", path)
-		}
-
-		return nil
+		return fmt.Errorf("%s exists", path)
 	}
 }
 
-// Produce a range (factory). Min and max are inclusive.
-func Range(min, max int64) Validator {
+// Range checks if integer value is withing the range [min-max].
+func Range(min int64, max int64) Validator {
 	return func(str string) error {
 		i, err := strconv.ParseInt(str, 10, 64)
 		if err != nil {
@@ -51,8 +79,3 @@ func Range(min, max int64) Validator {
 		return nil
 	}
 }
-
-/*
-ExistingPath	Check for an existing path
-NonexistentPath	Check for an non-existing path
-*/

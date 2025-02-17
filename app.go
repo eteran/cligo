@@ -9,40 +9,37 @@ import (
 	"golang.org/x/exp/slices"
 )
 
+type UsageFunc func()
+
+// An App serves as the main state for a cligo argument parser
 type App struct {
-	options []*Option
-	groups  map[string][]*Option
+	options   []*Option
+	groups    map[string][]*Option
+	usageFunc UsageFunc
 }
 
+// NewApp returns a new instance of the App type
 func NewApp() App {
 	return App{
 		groups: make(map[string][]*Option),
 	}
 }
 
-func pointerType(ptr any) string {
-	switch ptr.(type) {
-	case *int, *int8, *int16, *int32, *int64, *uint, *uint8, *uint16, *uint32, *uint64:
-		return " NUMBER"
-	case *string:
-		return " TEXT"
-	default:
-		return ""
-	}
+// SetUsageFunc sets the function to call in order to print the usage string
+// setting a nil usage function (the default) will result in the default usage function
+// being used
+func (a *App) SetUsageFunc(f UsageFunc) {
+	a.usageFunc = f
 }
 
-func filterFunc[T any](slice []T, f func(T) bool) []T {
-	result := make([]T, 0, len(slice))
-	for _, value := range slice {
-		if f(value) {
-			result = append(result, value)
-		}
-	}
-
-	return result
-}
-
+// Usage prints the usage string for the application
 func (a App) Usage() {
+
+	if a.usageFunc != nil {
+		a.usageFunc()
+		return
+	}
+
 	fmt.Printf("Usage: %s [OPTIONS]", os.Args[0])
 
 	positionals := filterFunc(a.options, func(opt *Option) bool {
@@ -87,6 +84,14 @@ func setOption(ptr any, v string, isNegated bool) error {
 	return nil
 }
 
+// AddOption adds a new option to the application and returns a pointer to an Option representing
+// the new option so that it can be referred to by modifiers.
+//
+//   - name is a comma separated list of long and short options and can also include negations.
+//     For example: "-a,--alpha,!--no-alpha" where --no-alpha will unset a previous --alpha or -a.
+//   - ptr is a pointer to the variable which will receive the value of the option.
+//   - help is the help string to use when printing the usage string
+//   - modifiers is zero or more modifier functions, which can add additional rules to the parameter
 func (a *App) AddOption(name string, ptr any, help string, modifiers ...Modifier) *Option {
 
 	opt := NewOption(name, ptr, help, modifiers...)
@@ -111,6 +116,21 @@ func setFlag(ptr any, v string, isNegated bool) error {
 	return nil
 }
 
+// AddFlag adds a new flag to the application and returns a pointer to an Option representing
+// the new flag so that it can be referred to by modifiers.
+//
+//   - name is a comma separated list of long and short options and can also include negations.
+//     For example: "-a,--alpha,!--no-alpha" where --no-alpha will unset a previous --alpha or -a.
+//   - ptr is a pointer to the variable which will receive the value of the option.
+//   - help is the help string to use when printing the usage string
+//   - modifiers is zero or more modifier functions, which can add additional rules to the parameter
+//
+// The main difference between a flag and an option is that flags are typically either an
+// integer or a bool whose value "increases" which each successive usage. For example:
+//
+//	./my_app -v -v -v
+//
+// would result in the v flag having a value of 3 (assuming that it is bound to an integer)
 func (a *App) AddFlag(name string, ptr any, help string, modifiers ...Modifier) *Option {
 
 	opt := NewFlag(name, ptr, help, modifiers...)
@@ -325,10 +345,16 @@ func (a App) parsePositional(args []string) ([]string, error) {
 	return args, nil
 }
 
+// ParseStrict will parse os.Args strictly. This means that unexpected positional arguments
+// are considered an error. It equivalent to calling:
+//
+//	ParseArgsStrict(os.Args[1:])
 func (a App) ParseStrict() error {
 	return a.ParseArgsStrict(os.Args[1:])
 }
 
+// ParseArgsStrict will parse the string slice args strictly.
+// This means that unexpected positional arguments are considered an error.
 func (a App) ParseArgsStrict(args []string) error {
 	rest, err := a.ParseArgs(args)
 	if err != nil {
@@ -342,10 +368,15 @@ func (a App) ParseArgsStrict(args []string) error {
 	return nil
 }
 
+// ParseStrict will parse os.Args.
+// It equivalent to calling:
+//
+//	ParseArgs(os.Args[1:])
 func (a App) Parse() ([]string, error) {
 	return a.ParseArgs(os.Args[1:])
 }
 
+// ParseArgs will parse the string slice args.
 func (a App) ParseArgs(args []string) ([]string, error) {
 	var err error
 
@@ -393,4 +424,26 @@ func (a App) validateOptions() error {
 	}
 
 	return nil
+}
+
+func pointerType(ptr any) string {
+	switch ptr.(type) {
+	case *int, *int8, *int16, *int32, *int64, *uint, *uint8, *uint16, *uint32, *uint64:
+		return " NUMBER"
+	case *string:
+		return " TEXT"
+	default:
+		return ""
+	}
+}
+
+func filterFunc[T any](slice []T, f func(T) bool) []T {
+	result := make([]T, 0, len(slice))
+	for _, value := range slice {
+		if f(value) {
+			result = append(result, value)
+		}
+	}
+
+	return result
 }

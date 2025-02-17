@@ -465,5 +465,158 @@ func TestRangeValidator(t *testing.T) {
 	err := app.ParseArgsStrict(args)
 	require.NoError(t, err)
 	require.Equal(t, 100, option1)
+}
 
+func TestExistingFileValidator(t *testing.T) {
+	t.Parallel()
+
+	app := cligo.NewApp()
+
+	option1 := ""
+
+	app.AddOption("-a,--alpha", &option1, "Option1", cligo.AddValidator(cligo.ExistingFile()))
+
+	args := []string{"--alpha=/etc/lsb-release"}
+	err := app.ParseArgsStrict(args)
+	require.NoError(t, err)
+}
+
+func TestExistingFileValidatorErrorNoExist(t *testing.T) {
+	t.Parallel()
+
+	app := cligo.NewApp()
+
+	option1 := ""
+
+	app.AddOption("-a,--alpha", &option1, "Option1", cligo.AddValidator(cligo.ExistingFile()))
+
+	args := []string{"--alpha=/etc/no-exist"}
+	err := app.ParseArgsStrict(args)
+	require.Error(t, err)
+}
+
+func TestExistingFileValidatorErrorDirectory(t *testing.T) {
+	t.Parallel()
+
+	app := cligo.NewApp()
+
+	option1 := ""
+
+	app.AddOption("-a,--alpha", &option1, "Option1", cligo.AddValidator(cligo.ExistingFile()))
+
+	args := []string{"--alpha=/etc/"}
+	err := app.ParseArgsStrict(args)
+	require.Error(t, err)
+}
+
+func TestExistingDirValidator(t *testing.T) {
+	t.Parallel()
+
+	app := cligo.NewApp()
+
+	option1 := ""
+
+	app.AddOption("-a,--alpha", &option1, "Option1", cligo.AddValidator(cligo.ExistingDirectory()))
+
+	args := []string{"--alpha=/etc/"}
+	err := app.ParseArgsStrict(args)
+	require.NoError(t, err)
+}
+
+func TestExistingDirValidatorError(t *testing.T) {
+	t.Parallel()
+
+	app := cligo.NewApp()
+
+	option1 := ""
+
+	app.AddOption("-a,--alpha", &option1, "Option1", cligo.AddValidator(cligo.ExistingDirectory()))
+
+	args := []string{"--alpha=/no-exist"}
+	err := app.ParseArgsStrict(args)
+	require.Error(t, err)
+}
+
+func TestExistingDirValidatorErrorFile(t *testing.T) {
+	t.Parallel()
+
+	app := cligo.NewApp()
+
+	option1 := ""
+
+	app.AddOption("-a,--alpha", &option1, "Option1", cligo.AddValidator(cligo.ExistingDirectory()))
+
+	args := []string{"--alpha=/etc/lsb-release"}
+	err := app.ParseArgsStrict(args)
+	require.Error(t, err)
+}
+
+func TestExistingPathValidatorDir(t *testing.T) {
+	t.Parallel()
+
+	app := cligo.NewApp()
+
+	option1 := ""
+
+	app.AddOption("-a,--alpha", &option1, "Option1", cligo.AddValidator(cligo.ExistingPath()))
+
+	args := []string{"--alpha=/etc/"}
+	err := app.ParseArgsStrict(args)
+	require.NoError(t, err)
+}
+
+func TestExistingPathValidatorFile(t *testing.T) {
+	t.Parallel()
+
+	app := cligo.NewApp()
+
+	option1 := ""
+
+	app.AddOption("-a,--alpha", &option1, "Option1", cligo.AddValidator(cligo.ExistingPath()))
+
+	args := []string{"--alpha=/etc/lsb-release"}
+	err := app.ParseArgsStrict(args)
+	require.NoError(t, err)
+}
+
+func TestNonExistingFileValidator(t *testing.T) {
+	t.Parallel()
+
+	app := cligo.NewApp()
+
+	option1 := ""
+
+	app.AddOption("-a,--alpha", &option1, "Option1", cligo.AddValidator(cligo.NonexistentPath()))
+
+	args := []string{"--alpha=/etc/no-exist"}
+	err := app.ParseArgsStrict(args)
+	require.NoError(t, err)
+}
+
+func TestNonExistingFileValidatorErrorFile(t *testing.T) {
+	t.Parallel()
+
+	app := cligo.NewApp()
+
+	option1 := ""
+
+	app.AddOption("-a,--alpha", &option1, "Option1", cligo.AddValidator(cligo.NonexistentPath()))
+
+	args := []string{"--alpha=/etc/lsb-release"}
+	err := app.ParseArgsStrict(args)
+	require.Error(t, err)
+}
+
+func TestNonExistingFileValidatorErrorDir(t *testing.T) {
+	t.Parallel()
+
+	app := cligo.NewApp()
+
+	option1 := ""
+
+	app.AddOption("-a,--alpha", &option1, "Option1", cligo.AddValidator(cligo.NonexistentPath()))
+
+	args := []string{"--alpha=/etc/"}
+	err := app.ParseArgsStrict(args)
+	require.Error(t, err)
 }

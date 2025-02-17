@@ -45,13 +45,13 @@ type Option struct {
 	excludes      []*Option
 	validators    []Validator
 	onSet         Callback
-	setter        Setter
+	setter        setterFunc
 
 	// TODO(eteran):
 	// envname
 }
 
-type Setter func(opt *Option, value string, isNegated bool) error
+type setterFunc func(opt *Option, value string, isNegated bool) error
 
 type Callback func(opt *Option)
 
