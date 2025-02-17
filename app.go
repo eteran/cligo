@@ -19,8 +19,8 @@ type App struct {
 }
 
 // NewApp returns a new instance of the App type
-func NewApp() App {
-	return App{
+func NewApp() *App {
+	return &App{
 		groups: make(map[string][]*Option),
 	}
 }
