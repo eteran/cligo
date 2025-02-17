@@ -376,7 +376,7 @@ func (a App) Parse() ([]string, error) {
 	return a.ParseArgs(os.Args[1:])
 }
 
-// ParseArgs will parse the string slice args.
+// ParseArgs will parse the string slice args and returns the unprocessed args as a new slice.
 func (a App) ParseArgs(args []string) ([]string, error) {
 	var err error
 
