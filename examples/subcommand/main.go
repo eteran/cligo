@@ -29,7 +29,7 @@ func main() {
 		app.AddFlag("-v,--verbose", &verbose, "increase verbosity")
 	})
 
-	err := mux.ParseStrict(func(cmd string) error {
+	err := mux.ParseStrict(func(cmd string, rest []string) error {
 		fmt.Println("Executing Command:", cmd)
 		return nil
 	})

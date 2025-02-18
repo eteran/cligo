@@ -10,7 +10,6 @@ type Mux struct {
 	commands map[string]Parser
 }
 
-type StrictCommandFunc func(cmd string) error
 type CommandFunc func(cmd string, rest []string) error
 
 // NewMux returns a new instance of the Mux type
@@ -37,11 +36,11 @@ func (mux *Mux) CreateCommand(cmd string, f func(app *App)) error {
 	return mux.AddCommand(cmd, app)
 }
 
-func (mux *Mux) ParseStrict(f StrictCommandFunc) error {
+func (mux *Mux) ParseStrict(f CommandFunc) error {
 	return mux.ParseArgsStrict(f, os.Args[1:])
 }
 
-func (mux *Mux) ParseArgsStrict(f StrictCommandFunc, args []string) error {
+func (mux *Mux) ParseArgsStrict(f CommandFunc, args []string) error {
 
 	if len(os.Args) < 2 {
 		return fmt.Errorf("missing sub-command. expected to be one of: %s", mux.subCommandString())
@@ -57,7 +56,7 @@ func (mux *Mux) ParseArgsStrict(f StrictCommandFunc, args []string) error {
 		return err
 	}
 
-	return f(cmd)
+	return f(cmd, []string{})
 }
 
 func (mux *Mux) Parse(f CommandFunc) error {
