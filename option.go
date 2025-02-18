@@ -55,6 +55,10 @@ type setterFunc func(opt *Option, value string, isNegated bool) error
 
 type Callback func(opt *Option)
 
+func (opt Option) Value() any {
+	return opt.ptr
+}
+
 func (opt Option) Exists() bool {
 	return opt.count > 0
 }
