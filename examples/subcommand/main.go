@@ -29,10 +29,17 @@ func main() {
 		app.AddFlag("-v,--verbose", &verbose, "increase verbosity")
 	})
 
-	if err := mux.ParseStrict(); err != nil {
+	err := mux.ParseStrict(func(cmd string) error {
+		fmt.Println("Executing Command:", cmd)
+		return nil
+
+	})
+
+	if err != nil {
 		if !errors.Is(err, cligo.ErrHelpRequested) {
 			fmt.Println(err)
 			os.Exit(0)
 		}
 	}
+
 }

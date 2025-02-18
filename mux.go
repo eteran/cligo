@@ -10,6 +10,8 @@ type Mux struct {
 	commands map[string]Parser
 }
 
+type CommandFunc func(cmd string) error
+
 // NewMux returns a new instance of the Mux type
 func NewMux() *Mux {
 	return &Mux{
@@ -34,11 +36,11 @@ func (mux *Mux) CreateCommand(cmd string, f func(app *App)) error {
 	return mux.AddCommand(cmd, app)
 }
 
-func (mux *Mux) ParseStrict() error {
-	return mux.ParseArgsStrict(os.Args[1:])
+func (mux *Mux) ParseStrict(f CommandFunc) error {
+	return mux.ParseArgsStrict(f, os.Args[1:])
 }
 
-func (mux *Mux) ParseArgsStrict(args []string) error {
+func (mux *Mux) ParseArgsStrict(f CommandFunc, args []string) error {
 
 	if len(os.Args) < 2 {
 		return fmt.Errorf("missing sub-command. expected to be one of: %s", mux.subCommandString())
@@ -50,14 +52,18 @@ func (mux *Mux) ParseArgsStrict(args []string) error {
 		return fmt.Errorf("invalid sub-command '%s'. expected to be one of: %s", cmd, mux.subCommandString())
 	}
 
-	return app.ParseArgsStrict(os.Args[2:])
+	if err := app.ParseArgsStrict(os.Args[2:]); err != nil {
+		return err
+	}
+
+	return f(cmd)
 }
 
-func (mux *Mux) Parse() ([]string, error) {
-	return mux.ParseArgs(os.Args[1:])
+func (mux *Mux) Parse(f CommandFunc) ([]string, error) {
+	return mux.ParseArgs(f, os.Args[1:])
 }
 
-func (mux *Mux) ParseArgs(args []string) ([]string, error) {
+func (mux *Mux) ParseArgs(f CommandFunc, args []string) ([]string, error) {
 	if len(os.Args) < 2 {
 		return nil, fmt.Errorf("missing sub-command. expected to be one of: %s", mux.subCommandString())
 	}
@@ -68,7 +74,13 @@ func (mux *Mux) ParseArgs(args []string) ([]string, error) {
 		return nil, fmt.Errorf("invalid sub-command '%s'. expected to be one of: %s", cmd, mux.subCommandString())
 	}
 
-	return app.ParseArgs(os.Args[2:])
+	rest, err := app.ParseArgs(os.Args[2:])
+	if err != nil {
+		return rest, err
+	}
+
+	return rest, f(cmd)
+
 }
 
 func (mux *Mux) subCommands() []string {
