@@ -10,7 +10,7 @@ type Mux struct {
 	commands map[string]Parser
 }
 
-// NewMux returns a new instance of the CommandMux type
+// NewMux returns a new instance of the Mux type
 func NewMux() *Mux {
 	return &Mux{
 		commands: make(map[string]Parser),

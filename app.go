@@ -83,7 +83,10 @@ func (a App) Usage() {
 }
 
 func setOption(ptr any, v string, isNegated bool) error {
+	// NOTE(eteran): isNegated is here for consistency of function definition,
+	// but only flags can be negated
 	_ = isNegated
+
 	if ptr != nil {
 		if err := setValue(ptr, v); err != nil {
 			return err

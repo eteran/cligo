@@ -4,7 +4,12 @@ dictionaryDefinitions: []
 dictionaries: []
 words:
   - cligo
+  - davecgh
   - eteran
+  - go-difflib
+  - go-spew
+  - gopkg
+  - pmezard
   - Positionals
   - stretchr
 ignoreWords: []
