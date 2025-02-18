@@ -119,9 +119,9 @@ func getValue(ptr any) string {
 	case *uint64:
 		return strconv.FormatUint(*p, 10)
 	case *float32:
-		return strconv.FormatFloat(float64(*p), 'f', 6, 64)
+		return strconv.FormatFloat(float64(*p), 'f', -1, 64)
 	case *float64:
-		return strconv.FormatFloat(*p, 'f', 6, 64)
+		return strconv.FormatFloat(*p, 'f', -1, 64)
 	case *bool:
 		return strconv.FormatBool(*p)
 	case *string:
