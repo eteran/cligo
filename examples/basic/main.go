@@ -8,6 +8,13 @@ import (
 	"github.com/eteran/cligo"
 )
 
+func Run(filename string, verbose bool) error {
+	fmt.Println("Running Program")
+	fmt.Printf("Filename: %s\n", filename)
+	fmt.Printf("Verbose : %v\n", verbose)
+	return nil
+}
+
 func main() {
 
 	var filename string
@@ -22,5 +29,9 @@ func main() {
 			fmt.Println(err)
 			os.Exit(0)
 		}
+	}
+
+	if err := Run(filename, verbose); err != nil {
+		panic(err)
 	}
 }
