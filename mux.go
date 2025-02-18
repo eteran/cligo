@@ -6,32 +6,32 @@ import (
 	"strings"
 )
 
-type CommandMux struct {
-	commands map[string]*App
+type Mux struct {
+	commands map[string]Parser
 }
 
-// CommandMux returns a new instance of the CommandMux type
-func NewCommandMux() *CommandMux {
-	return &CommandMux{
-		commands: make(map[string]*App),
+// NewMux returns a new instance of the CommandMux type
+func NewMux() *Mux {
+	return &Mux{
+		commands: make(map[string]Parser),
 	}
 }
 
-func (mux *CommandMux) AddCommand(cmd string, app *App) error {
+func (mux *Mux) AddCommand(cmd string, parser Parser) error {
 
 	if _, ok := mux.commands[cmd]; ok {
 		return fmt.Errorf("command '%s' already registered", cmd)
 	}
 
-	mux.commands[cmd] = app
+	mux.commands[cmd] = parser
 	return nil
 }
 
-func (mux *CommandMux) ParseStrict() error {
+func (mux *Mux) ParseStrict() error {
 	return mux.ParseArgsStrict(os.Args[1:])
 }
 
-func (mux *CommandMux) ParseArgsStrict(args []string) error {
+func (mux *Mux) ParseArgsStrict(args []string) error {
 
 	if len(os.Args) < 2 {
 		return fmt.Errorf("missing sub-command. expected to be one of: %s", mux.subCommandString())
@@ -46,11 +46,11 @@ func (mux *CommandMux) ParseArgsStrict(args []string) error {
 	return app.ParseArgsStrict(os.Args[2:])
 }
 
-func (mux *CommandMux) Parse() ([]string, error) {
+func (mux *Mux) Parse() ([]string, error) {
 	return mux.ParseArgs(os.Args[1:])
 }
 
-func (mux *CommandMux) ParseArgs(args []string) ([]string, error) {
+func (mux *Mux) ParseArgs(args []string) ([]string, error) {
 	if len(os.Args) < 2 {
 		return nil, fmt.Errorf("missing sub-command. expected to be one of: %s", mux.subCommandString())
 	}
@@ -64,7 +64,7 @@ func (mux *CommandMux) ParseArgs(args []string) ([]string, error) {
 	return app.ParseArgs(os.Args[2:])
 }
 
-func (mux *CommandMux) subCommands() []string {
+func (mux *Mux) subCommands() []string {
 
 	commands := make([]string, 0)
 
@@ -75,7 +75,7 @@ func (mux *CommandMux) subCommands() []string {
 	return commands
 }
 
-func (mux *CommandMux) subCommandString() string {
+func (mux *Mux) subCommandString() string {
 
 	commands := mux.subCommands()
 

@@ -6,5 +6,6 @@ words:
   - cligo
   - eteran
   - Positionals
+  - stretchr
 ignoreWords: []
 import: []

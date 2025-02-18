@@ -9,6 +9,13 @@ import (
 	"golang.org/x/exp/slices"
 )
 
+type Parser interface {
+	ParseStrict() error
+	ParseArgsStrict(args []string) error
+	Parse() ([]string, error)
+	ParseArgs(args []string) ([]string, error)
+}
+
 type UsageFunc func()
 
 // An App serves as the main state for a cligo argument parser
@@ -76,6 +83,7 @@ func (a App) Usage() {
 }
 
 func setOption(ptr any, v string, isNegated bool) error {
+	_ = isNegated
 	if ptr != nil {
 		if err := setValue(ptr, v); err != nil {
 			return err
@@ -430,6 +438,8 @@ func pointerType(ptr any) string {
 	switch ptr.(type) {
 	case *int, *int8, *int16, *int32, *int64, *uint, *uint8, *uint16, *uint32, *uint64:
 		return " NUMBER"
+	case *float32, *float64:
+		return " REAL"
 	case *string:
 		return " TEXT"
 	default:

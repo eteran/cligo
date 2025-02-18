@@ -25,7 +25,7 @@ func main() {
 	listApp := cligo.NewApp()
 	listApp.AddFlag("-v,--verbose", &verbose, "increase verbosity")
 
-	mux := cligo.NewCommandMux()
+	mux := cligo.NewMux()
 	mux.AddCommand("install", installApp)
 	mux.AddCommand("remove", removeApp)
 	mux.AddCommand("list", listApp)

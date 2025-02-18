@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"regexp"
 	"strconv"
 )
 
@@ -76,6 +77,16 @@ func Range(min int64, max int64) Validator {
 			return fmt.Errorf("%s is not in the range of [%d-%d]", str, min, max)
 		}
 
+		return nil
+	}
+}
+
+// MatchesRegex checks if the string matches the given regular expression
+func MatchesRegex(r *regexp.Regexp) Validator {
+	return func(str string) error {
+		if !r.MatchString(str) {
+			return fmt.Errorf("'%s' does not match the regular expression '%s'", str, r.String())
+		}
 		return nil
 	}
 }

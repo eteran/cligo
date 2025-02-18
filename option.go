@@ -107,7 +107,7 @@ func getValue(ptr any) string {
 	case *int32:
 		return strconv.FormatInt(int64(*p), 10)
 	case *int64:
-		return strconv.FormatInt(int64(*p), 10)
+		return strconv.FormatInt(*p, 10)
 	case *uint:
 		return strconv.FormatUint(uint64(*p), 10)
 	case *uint8:
@@ -117,7 +117,11 @@ func getValue(ptr any) string {
 	case *uint32:
 		return strconv.FormatUint(uint64(*p), 10)
 	case *uint64:
-		return strconv.FormatUint(uint64(*p), 10)
+		return strconv.FormatUint(*p, 10)
+	case *float32:
+		return strconv.FormatFloat(float64(*p), 'f', 6, 64)
+	case *float64:
+		return strconv.FormatFloat(*p, 'f', 6, 64)
 	case *bool:
 		return strconv.FormatBool(*p)
 	case *string:
@@ -196,6 +200,18 @@ func setValue(ptr any, value string) error {
 			return err
 		}
 		*p = b
+	case *float32:
+		f, err := strconv.ParseFloat(value, 32)
+		if err != nil {
+			return err
+		}
+		*p = float32(f)
+	case *float64:
+		f, err := strconv.ParseFloat(value, 64)
+		if err != nil {
+			return err
+		}
+		*p = f
 	case *string:
 		*p = value
 	default:
