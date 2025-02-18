@@ -27,6 +27,13 @@ func (mux *Mux) AddCommand(cmd string, parser Parser) error {
 	return nil
 }
 
+func (mux *Mux) CreateCommand(cmd string, f func(app *App)) error {
+
+	app := NewApp()
+	f(app)
+	return mux.AddCommand(cmd, app)
+}
+
 func (mux *Mux) ParseStrict() error {
 	return mux.ParseArgsStrict(os.Args[1:])
 }

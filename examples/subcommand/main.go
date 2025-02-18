@@ -14,21 +14,20 @@ func main() {
 	var verbose bool
 	var name string
 
-	installApp := cligo.NewApp()
-	installApp.AddOption("-f,--file", &filename, "filename", cligo.Required(), cligo.AddValidator(cligo.ExistingFile()))
-	installApp.AddFlag("-v,--verbose", &verbose, "increase verbosity")
-
-	removeApp := cligo.NewApp()
-	removeApp.AddOption("-n,--name", &name, "name", cligo.Required(), cligo.AddValidator(cligo.ExistingFile()))
-	removeApp.AddFlag("-v,--verbose", &verbose, "increase verbosity")
-
-	listApp := cligo.NewApp()
-	listApp.AddFlag("-v,--verbose", &verbose, "increase verbosity")
-
 	mux := cligo.NewMux()
-	mux.AddCommand("install", installApp)
-	mux.AddCommand("remove", removeApp)
-	mux.AddCommand("list", listApp)
+	mux.CreateCommand("install", func(app *cligo.App) {
+		app.AddOption("-f,--file", &filename, "filename", cligo.Required(), cligo.AddValidator(cligo.ExistingFile()))
+		app.AddFlag("-v,--verbose", &verbose, "increase verbosity")
+	})
+
+	mux.CreateCommand("remove", func(app *cligo.App) {
+		app.AddOption("name", &name, "name", cligo.Required(), cligo.AddValidator(cligo.ExistingFile()))
+		app.AddFlag("-v,--verbose", &verbose, "increase verbosity")
+	})
+
+	mux.CreateCommand("list", func(app *cligo.App) {
+		app.AddFlag("-v,--verbose", &verbose, "increase verbosity")
+	})
 
 	if err := mux.ParseStrict(); err != nil {
 		if !errors.Is(err, cligo.ErrHelpRequested) {
