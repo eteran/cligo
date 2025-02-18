@@ -32,7 +32,6 @@ func main() {
 	err := mux.ParseStrict(func(cmd string) error {
 		fmt.Println("Executing Command:", cmd)
 		return nil
-
 	})
 
 	if err != nil {
