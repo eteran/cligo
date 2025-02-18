@@ -16,11 +16,11 @@ import (
 )
 
 func main() {
-	app := cligo.NewApp()
 
 	var filename string
 	var verbose bool
 
+	app := cligo.NewApp()
 	app.AddOption("-f,--file", &filename, "filename", cligo.Required(), cligo.AddValidator(cligo.ExistingFile()))
 	app.AddFlag("-v,--verbose", &verbose, "increase verbosity")
 
@@ -31,6 +31,7 @@ func main() {
 		}
 	}
 }
+
 ```
 
 If we want, we can make the filename positional instead.
@@ -47,11 +48,11 @@ import (
 )
 
 func main() {
-	app := cligo.NewApp()
 
 	var filename string
 	var verbose bool
 
+	app := cligo.NewApp()
 	app.AddOption("filename", &filename, "filename", cligo.Required(), cligo.AddValidator(cligo.ExistingFile()))
 	app.AddFlag("-v,--verbose", &verbose, "increase verbosity")
 
@@ -62,5 +63,6 @@ func main() {
 		}
 	}
 }
+
 ```
 

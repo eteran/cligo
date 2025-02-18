@@ -9,11 +9,11 @@ import (
 )
 
 func main() {
-	app := cligo.NewApp()
 
 	var filename string
 	var verbose bool
 
+	app := cligo.NewApp()
 	app.AddOption("filename", &filename, "filename", cligo.Required(), cligo.AddValidator(cligo.ExistingFile()))
 	app.AddFlag("-v,--verbose", &verbose, "increase verbosity")
 
