@@ -424,7 +424,7 @@ func TestDefault(t *testing.T) {
 func TestCaptureDefault(t *testing.T) {
 	t.Parallel()
 
-	app := cligo.NewApp()
+	app := cligo.NewApp(cligo.WithErrorOnHelp())
 
 	option1 := "hello world"
 

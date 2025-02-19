@@ -25,10 +25,9 @@ func main() {
 	app.AddFlag("-v,--verbose", &verbose, "increase verbosity")
 
 	if err := app.ParseStrict(); err != nil {
-		if !errors.Is(err, cligo.ErrHelpRequested) {
-			fmt.Println(err)
-			os.Exit(0)
-		}
+		fmt.Println(err)
+		os.Exit(0)
+
 	}
 }
 
@@ -57,10 +56,8 @@ func main() {
 	app.AddFlag("-v,--verbose", &verbose, "increase verbosity")
 
 	if err := app.ParseStrict(); err != nil {
-		if !errors.Is(err, cligo.ErrHelpRequested) {
-			fmt.Println(err)
-			os.Exit(0)
-		}
+		fmt.Println(err)
+		os.Exit(0)
 	}
 }
 

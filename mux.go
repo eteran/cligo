@@ -3,109 +3,105 @@ package cligo
 import (
 	"fmt"
 	"os"
-	"strings"
 )
 
 type Mux struct {
-	commands map[string]Parser
+	commands  map[string]*App
+	usageFunc UsageFunc
 }
-
-type CommandFunc func(cmd string, rest []string) error
 
 // NewMux returns a new instance of the Mux type
 func NewMux() *Mux {
 	return &Mux{
-		commands: make(map[string]Parser),
+		commands: make(map[string]*App),
 	}
 }
 
-func (mux *Mux) AddCommand(cmd string, parser Parser) error {
+// SetUsageFunc sets the function to call in order to print the usage string
+// setting a nil usage function (the default) will result in the default usage function
+// being used
+func (mux *Mux) SetUsageFunc(f UsageFunc) {
+	mux.usageFunc = f
+}
+
+func (mux *Mux) AddCommand(cmd string, app *App) error {
 
 	if _, ok := mux.commands[cmd]; ok {
 		return fmt.Errorf("command '%s' already registered", cmd)
 	}
 
-	mux.commands[cmd] = parser
+	mux.commands[cmd] = app
 	return nil
 }
 
-func (mux *Mux) CreateCommand(cmd string, f func(app *App)) error {
+func (mux *Mux) CreateCommand(cmd string, description string, f func(app *App)) error {
 
 	app := NewApp()
+	app.SetName(cmd)
+	app.SetDescription(description)
 	f(app)
 	return mux.AddCommand(cmd, app)
 }
 
-func (mux *Mux) ParseStrict(f CommandFunc) error {
-	return mux.ParseArgsStrict(f, os.Args[1:])
+func (mux Mux) Usage() {
+	if mux.usageFunc != nil {
+		mux.usageFunc()
+		return
+	}
+
+	fmt.Printf("Usage: %s [COMMAND] [OPTIONS]\n\n", os.Args[0])
+	fmt.Println("Commands:")
+	for name, cmd := range mux.commands {
+		fmt.Printf("  %-15s - %s\n", name, cmd.description)
+	}
 }
 
-func (mux *Mux) ParseArgsStrict(f CommandFunc, args []string) error {
+func (mux *Mux) ParseStrict() (string, error) {
+	return mux.ParseArgsStrict(os.Args[1:])
+}
+
+func (mux *Mux) ParseArgsStrict(args []string) (string, error) {
 
 	if len(os.Args) < 2 {
-		return fmt.Errorf("missing sub-command. expected to be one of: %s", mux.subCommandString())
+		mux.Usage()
+		os.Exit(-1)
 	}
 
 	cmd := os.Args[1]
 	app, ok := mux.commands[cmd]
 	if !ok {
-		return fmt.Errorf("invalid sub-command '%s'. expected to be one of: %s", cmd, mux.subCommandString())
+		mux.Usage()
+		os.Exit(-1)
 	}
 
 	if err := app.ParseArgsStrict(os.Args[2:]); err != nil {
-		return err
+		return "", err
 	}
 
-	return f(cmd, []string{})
+	return cmd, nil
 }
 
-func (mux *Mux) Parse(f CommandFunc) error {
-	return mux.ParseArgs(f, os.Args[1:])
+func (mux *Mux) Parse() (string, []string, error) {
+	return mux.ParseArgs(os.Args[1:])
 }
 
-func (mux *Mux) ParseArgs(f CommandFunc, args []string) error {
+func (mux *Mux) ParseArgs(args []string) (string, []string, error) {
 	if len(os.Args) < 2 {
-		return fmt.Errorf("missing sub-command. expected to be one of: %s", mux.subCommandString())
+		mux.Usage()
+		os.Exit(-1)
 	}
 
 	cmd := os.Args[1]
 	app, ok := mux.commands[cmd]
 	if !ok {
-		return fmt.Errorf("invalid sub-command '%s'. expected to be one of: %s", cmd, mux.subCommandString())
+		mux.Usage()
+		os.Exit(-1)
 	}
 
 	rest, err := app.ParseArgs(os.Args[2:])
 	if err != nil {
-		return err
+		return "", nil, err
 	}
 
-	return f(cmd, rest)
-
-}
-
-func (mux *Mux) subCommands() []string {
-
-	commands := make([]string, 0)
-
-	for name := range mux.commands {
-		commands = append(commands, name)
-	}
-
-	return commands
-}
-
-func (mux *Mux) subCommandString() string {
-
-	commands := mux.subCommands()
-
-	switch len(commands) {
-	case 0:
-		return ""
-	case 1:
-		return commands[0]
-	case 2:
-		return fmt.Sprintf("%s or %s", commands[0], commands[1])
-	default:
-		return strings.Join(commands[:len(commands)-1], ", ") + " or " + commands[len(commands)-1]
-	}
+	return cmd, rest, nil
 }

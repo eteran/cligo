@@ -9,27 +9,45 @@ import (
 	"golang.org/x/exp/slices"
 )
 
-type Parser interface {
-	ParseStrict() error
-	ParseArgsStrict(args []string) error
-	Parse() ([]string, error)
-	ParseArgs(args []string) ([]string, error)
+type AppOption func(options *App)
+
+func WithErrorOnHelp() AppOption {
+	return func(app *App) {
+		app.returnErrorOnHelp = true
+	}
 }
 
 type UsageFunc func()
 
 // An App serves as the main state for a cligo argument parser
 type App struct {
-	options   []*Option
-	groups    map[string][]*Option
-	usageFunc UsageFunc
+	options           []*Option
+	groups            map[string][]*Option
+	usageFunc         UsageFunc
+	returnErrorOnHelp bool
+	name              string
+	description       string
 }
 
 // NewApp returns a new instance of the App type
-func NewApp() *App {
-	return &App{
+func NewApp(opts ...AppOption) *App {
+	app := &App{
 		groups: make(map[string][]*Option),
 	}
+
+	for _, opt := range opts {
+		opt(app)
+	}
+
+	return app
+}
+
+func (a *App) SetName(name string) {
+	a.name = name
+}
+
+func (a *App) SetDescription(description string) {
+	a.description = description
 }
 
 // SetUsageFunc sets the function to call in order to print the usage string
@@ -47,7 +65,11 @@ func (a App) Usage() {
 		return
 	}
 
-	fmt.Printf("Usage: %s [OPTIONS]", os.Args[0])
+	if a.name != "" {
+		fmt.Printf("Usage: %s %s [OPTIONS]", os.Args[0], a.name)
+	} else {
+		fmt.Printf("Usage: %s [OPTIONS]", os.Args[0])
+	}
 
 	positionals := filterFunc(a.options, func(opt *Option) bool {
 		return opt.IsPositional()
@@ -397,6 +419,14 @@ func (a App) ParseArgs(args []string) ([]string, error) {
 			if errors.Is(err, ErrEndOfArguments) {
 				break
 			}
+
+			if errors.Is(err, ErrHelpRequested) {
+				if a.returnErrorOnHelp {
+					return nil, err
+				}
+				os.Exit(0)
+			}
+
 			return nil, err
 		}
 	}
