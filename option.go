@@ -53,7 +53,7 @@ type Option struct {
 
 type setterFunc func(opt *Option, value string, isNegated bool) error
 
-type Callback func(opt *Option)
+type Callback func(opt *Option) error
 
 func (opt Option) Value() any {
 	return opt.ptr
@@ -388,7 +388,9 @@ func NewOption(name string, ptr any, help string, modifiers ...Modifier) *Option
 
 			opt.count++
 			if opt.onSet != nil {
-				opt.onSet(opt)
+				if err := opt.onSet(opt); err != nil {
+					return err
+				}
 			}
 			return nil
 		},
@@ -460,7 +462,9 @@ func NewFlag(name string, ptr any, help string, modifiers ...Modifier) *Option {
 
 			opt.count++
 			if opt.onSet != nil {
-				opt.onSet(opt)
+				if err := opt.onSet(opt); err != nil {
+					return err
+				}
 			}
 
 			return nil
